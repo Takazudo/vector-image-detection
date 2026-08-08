@@ -17,6 +17,17 @@ export interface QdrantStoreConfig {
   dim: number;
 }
 
+/**
+ * `VectorStore` plus `dropCollection` — `qdrant sync` needs the latter to
+ * make the collection an exact "derived copy" of the current index bundle
+ * (drop + recreate, so deleted/renamed source ids don't linger as stale
+ * points; see `QdrantVectorStore.dropCollection`'s doc comment in core).
+ * `search --backend qdrant` only ever calls the plain `VectorStore` subset.
+ */
+export interface QdrantSyncStore extends VectorStore {
+  dropCollection(): Promise<void>;
+}
+
 export interface VlmTagFn {
   (imagePaths: string[], opts: { language?: VlmLanguage }): Promise<VlmTagResult[]>;
 }
@@ -36,7 +47,7 @@ export interface CliDeps {
   /** Repo worktree root that `data/indexes/<name>/` and `apps/demo/public/data/` are resolved against. Defaults to `process.cwd()`. */
   rootDir: string;
   createEmbedder: (config?: EmbedderFactoryConfig) => Embedder;
-  createQdrantStore: (config: QdrantStoreConfig) => VectorStore;
+  createQdrantStore: (config: QdrantStoreConfig) => QdrantSyncStore;
   vlmTag: VlmTagFn;
   estimateCost: EstimateCostFn;
   /** y/n prompt for interactive tag confirmation flows. Resolves to the user's answer. */

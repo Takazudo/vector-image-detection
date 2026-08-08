@@ -4,9 +4,15 @@ import sharp from "sharp";
 
 export const THUMB_SIZE = 256;
 
-/** Thumbnails are always re-encoded as `.jpg`, regardless of source format — same rule `packages/vlm-tagger`'s downscaler uses. */
+/**
+ * Thumbnails are always re-encoded as `.jpg`, regardless of source format —
+ * same rule `packages/vlm-tagger`'s downscaler uses. Appends `.jpg` rather
+ * than replacing the source extension, so e.g. `photo.jpg` and `photo.png`
+ * sitting side by side (distinct source files) get distinct thumb paths
+ * instead of colliding on the same `photo.jpg` output file.
+ */
 export function toThumbRelPath(relPath: string): string {
-  return relPath.replace(/\.[a-zA-Z0-9]+$/, ".jpg");
+  return `${relPath}.jpg`;
 }
 
 /** Writes a `<=256px`-long-edge JPEG thumbnail of `srcPath` to `destPath`, creating parent directories as needed. Never upscales. */

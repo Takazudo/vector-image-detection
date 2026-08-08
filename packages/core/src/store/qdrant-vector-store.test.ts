@@ -79,4 +79,22 @@ describe.skipIf(!QDRANT_URL)("QdrantVectorStore (integration, requires QDRANT_UR
 
     expect(await store.get([])).toEqual([]);
   });
+
+  it("dropCollection removes every point and ensureCollection recreates a fresh collection afterward", async () => {
+    const collection = `${COLLECTION}-drop`;
+    const store = new QdrantVectorStore({ url: QDRANT_URL as string, collection, dim: DIM });
+
+    await store.upsert([{ id: "a.jpg", vector: vec(1, 0, 0, 0), payload: {} }]);
+    expect(await store.count()).toBe(1);
+
+    await store.dropCollection();
+    // Idempotent — dropping an already-absent collection must not throw.
+    await store.dropCollection();
+
+    await store.upsert([{ id: "b.jpg", vector: vec(0, 1, 0, 0), payload: {} }]);
+    expect(await store.count()).toBe(1);
+    expect(await store.get(["a.jpg"])).toEqual([]);
+
+    await new QdrantClient({ url: QDRANT_URL as string }).deleteCollection(collection).catch(() => {});
+  });
 });

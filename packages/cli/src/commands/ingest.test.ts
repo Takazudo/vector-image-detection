@@ -71,4 +71,41 @@ describe("vis ingest", () => {
     expect(cat.knownLabel).toBe("cat");
     expect(cat.id).toBe("cat-1.jpg"); // id/file stay relative to the ingested dir itself
   });
+
+  it("carries confirmed tags forward by item id when re-ingesting an existing index", async () => {
+    const { deps } = fakeDeps({ rootDir: fixture.rootDir });
+    await runCli(["ingest", "photos", "--index", "demo"], deps);
+    const code = await runCli(["tag", "vocab", "cat", "dog", "--index", "demo", "--apply"], deps);
+    expect(code).toBe(0);
+
+    const metaPath = path.join(fixture.rootDir, "data", "indexes", "demo", "meta.json");
+    const tagged = JSON.parse(await fs.readFile(metaPath, "utf8"));
+    const catBefore = tagged.items.find((item: { file: string }) => item.file === "cat-1.jpg");
+    expect(catBefore.tags).toEqual(["cat"]);
+
+    const reingestCode = await runCli(["ingest", "photos", "--index", "demo"], deps);
+    expect(reingestCode).toBe(0);
+
+    const afterReingest = JSON.parse(await fs.readFile(metaPath, "utf8"));
+    const catAfter = afterReingest.items.find((item: { file: string }) => item.file === "cat-1.jpg");
+    expect(catAfter.tags).toEqual(["cat"]); // not wiped back to [] by the rebuild
+  });
+
+  it("gives a brand-new item (added since the last ingest) an empty tags list", async () => {
+    const { deps } = fakeDeps({ rootDir: fixture.rootDir });
+    await runCli(["ingest", "photos", "--index", "demo"], deps);
+    await runCli(["tag", "vocab", "cat", "dog", "--index", "demo", "--apply"], deps);
+
+    await fs.copyFile(
+      path.join(fixture.photosDir, "cat-1.jpg"),
+      path.join(fixture.photosDir, "cat-new.jpg"),
+    );
+    const code = await runCli(["ingest", "photos", "--index", "demo"], deps);
+    expect(code).toBe(0);
+
+    const metaPath = path.join(fixture.rootDir, "data", "indexes", "demo", "meta.json");
+    const meta = JSON.parse(await fs.readFile(metaPath, "utf8"));
+    const newItem = meta.items.find((item: { file: string }) => item.file === "cat-new.jpg");
+    expect(newItem.tags).toEqual([]);
+  });
 });

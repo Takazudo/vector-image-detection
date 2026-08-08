@@ -46,6 +46,15 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
       const indexDir = resolveIndexDir(deps.rootDir, opts.index);
       const thumbsDir = resolveThumbsDir(indexDir);
 
+      // Re-ingesting an index that already has confirmed tags (from `tag
+      // vocab`/`propagate`/`vlm`) must not silently discard them — carry
+      // forward by item id from any existing bundle at this indexDir.
+      const existingTagsById = new Map<string, string[]>();
+      const existing = await store.loadIndex(indexDir).catch(() => null);
+      if (existing) {
+        for (const item of existing.meta.items) existingTagsById.set(item.id, item.tags);
+      }
+
       const items: IndexItem[] = [];
       const vectors: Vector[] = [];
 
@@ -66,7 +75,7 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
             id: image.relPath,
             file: image.relPath,
             thumb: `thumbs/${thumbRelPath}`,
-            tags: [],
+            tags: existingTagsById.get(image.relPath) ?? [],
             ...(manifestEntry?.knownLabel ? { knownLabel: manifestEntry.knownLabel } : {}),
             ...(manifestEntry?.source ? { source: manifestEntry.source } : {}),
             ...(manifestEntry?.license ? { license: manifestEntry.license } : {}),

@@ -36,6 +36,7 @@ describe("vis export-demo", () => {
     await expect(fs.stat(path.join(demoDataDir, "stale-leftover.txt"))).rejects.toThrow();
     const meta = JSON.parse(await fs.readFile(path.join(demoDataDir, "meta.json"), "utf8"));
     expect(meta.items).toHaveLength(2);
-    await expect(fs.stat(path.join(demoDataDir, "thumbs", "cat-1.jpg"))).resolves.toBeDefined();
+    const cat1 = meta.items.find((item: { file: string }) => item.file === "cat-1.jpg");
+    await expect(fs.stat(path.join(demoDataDir, cat1.thumb))).resolves.toBeDefined();
   });
 });

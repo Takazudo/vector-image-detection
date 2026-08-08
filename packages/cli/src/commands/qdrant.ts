@@ -44,6 +44,10 @@ export function registerQdrantCommands(program: Command, deps: CliDeps): void {
       });
 
       try {
+        // Drop + recreate so the collection is an exact derived copy of the
+        // current bundle — a plain upsert would leave stale points behind
+        // for any id that was deleted or renamed since the last sync.
+        await qdrantStore.dropCollection();
         await qdrantStore.upsert(items);
       } catch (err) {
         if (isConnectionError(err)) {

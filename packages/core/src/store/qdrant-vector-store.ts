@@ -47,6 +47,21 @@ export class QdrantVectorStore implements VectorStore {
     this.dim = config.dim;
   }
 
+  /**
+   * Deletes the collection if it exists (no-op otherwise) and resets the
+   * `ensureCollection` cache, so the next `upsert`/`ensureCollection` call
+   * recreates it from scratch. A full drop-and-recreate is how a caller
+   * makes the collection an exact "derived copy" of a rebuilt index bundle
+   * — a plain re-`upsert()` only adds/updates points for the ids it's given
+   * and never removes points for ids that dropped out of the source (e.g. a
+   * deleted or renamed file).
+   */
+  async dropCollection(): Promise<void> {
+    const { exists } = await this.client.collectionExists(this.collection);
+    if (exists) await this.client.deleteCollection(this.collection);
+    this.ensured = undefined;
+  }
+
   /** Creates the collection (cosine distance, `dim`-sized vectors) if it doesn't exist yet. Idempotent. */
   async ensureCollection(): Promise<void> {
     this.ensured ??= (async () => {
