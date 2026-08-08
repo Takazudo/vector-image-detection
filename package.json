@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "pnpm -r run typecheck",
-    "test": "vitest run",
+    "test": "vitest run && pnpm run test:scripts",
+    "test:scripts": "node --test scripts/lib/*.node-test.mjs",
     "build": "pnpm -r run build",
     "format": "prettier --write .",
     "fetch-samples": "node scripts/fetch-samples.mjs"
