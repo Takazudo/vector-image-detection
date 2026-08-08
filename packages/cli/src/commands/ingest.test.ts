@@ -133,4 +133,23 @@ describe("vis ingest", () => {
     const after = await fs.readFile(path.join(thumbsDir, String(firstThumb)));
     expect(after.equals(before)).toBe(true);
   });
+
+  it("aborts re-ingest (keeping meta.json intact) when the existing index is corrupt", async () => {
+    const { deps } = fakeDeps({ rootDir: fixture.rootDir });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], deps)).toBe(0);
+    await runCli(["tag", "vocab", "cat", "dog", "--index", "demo", "--apply"], deps);
+
+    const indexDir = path.join(fixture.rootDir, "data", "indexes", "demo");
+    const metaPath = path.join(indexDir, "meta.json");
+    const metaBefore = await fs.readFile(metaPath, "utf8");
+
+    // Truncate embeddings.bin — a load failure that is NOT "index does not exist".
+    await fs.writeFile(path.join(indexDir, "embeddings.bin"), Buffer.alloc(3));
+
+    const retry = fakeDeps({ rootDir: fixture.rootDir });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], retry.deps)).not.toBe(0);
+
+    // The tagged meta must survive untouched — no silent tag wipe.
+    expect(await fs.readFile(metaPath, "utf8")).toBe(metaBefore);
+  });
 });

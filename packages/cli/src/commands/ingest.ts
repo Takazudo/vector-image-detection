@@ -55,7 +55,17 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
       // vocab`/`propagate`/`vlm`) must not silently discard them — carry
       // forward by item id from any existing bundle at this indexDir.
       const existingTagsById = new Map<string, string[]>();
-      const existing = await store.loadIndex(indexDir).catch(() => null);
+      // Only a genuinely missing index means "fresh ingest". Any other load
+      // failure (corrupt bin, unreadable meta) must abort — proceeding would
+      // rebuild with empty tags and silently destroy confirmed tag data.
+      const existing = await store.loadIndex(indexDir).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException | null)?.code === "ENOENT") return null;
+        throw new Error(
+          `ingest: existing index at "${path.relative(deps.rootDir, indexDir)}" could not be ` +
+            `loaded (${error instanceof Error ? error.message : String(error)}). ` +
+            `Refusing to overwrite it — repair or delete that index directory, then re-run.`,
+        );
+      });
       if (existing) {
         for (const item of existing.meta.items) existingTagsById.set(item.id, item.tags);
       }
