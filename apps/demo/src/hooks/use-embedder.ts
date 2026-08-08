@@ -6,6 +6,8 @@ import { embedderModeFor } from "../lib/embedder-protocol";
 export interface EmbedderHandle {
   status: EmbedderStatus;
   embedTexts: (texts: string[]) => Promise<Float32Array[]>;
+  /** Starts the model load without embedding anything — e.g. an explicit "load now" affordance. */
+  preload: () => void;
 }
 
 export function useEmbedder(meta: Pick<IndexMeta, "modelId" | "dim">): EmbedderHandle {
@@ -17,11 +19,13 @@ export function useEmbedder(meta: Pick<IndexMeta, "modelId" | "dim">): EmbedderH
     return () => instance.terminate();
   }, [meta.modelId, meta.dim]);
 
-  // Covers the first render, before the effect has created the client.
-  const pendingStatus = useMemo<EmbedderStatus>(
-    () => ({ phase: "loading", mode: embedderModeFor(meta.modelId), downloads: [] }),
-    [meta.modelId],
-  );
+  // Covers the first render, before the effect has created the client. Mirrors
+  // EmbedderClient's own constructor: mock starts loading immediately (it's
+  // free), a real model stays idle until something asks for it.
+  const pendingStatus = useMemo<EmbedderStatus>(() => {
+    const mode = embedderModeFor(meta.modelId);
+    return mode === "mock" ? { phase: "loading", mode, downloads: [] } : { phase: "idle", mode };
+  }, [meta.modelId]);
 
   const subscribe = useMemo(
     () => (onChange: () => void) => client?.subscribe(onChange) ?? (() => {}),
@@ -37,6 +41,7 @@ export function useEmbedder(meta: Pick<IndexMeta, "modelId" | "dim">): EmbedderH
         client
           ? client.embedTexts(texts)
           : Promise.reject(new Error("the embedder is not ready yet")),
+      preload: () => client?.preload(),
     }),
     [client, status],
   );

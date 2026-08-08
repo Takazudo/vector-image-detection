@@ -3,6 +3,7 @@ import { clustering, labeling } from "@vector-image-detection/core/browser";
 import { useMemo, useState } from "react";
 import { PhotoCard } from "../components/PhotoCard";
 import { VocabularyField } from "../components/VocabularyField";
+import { canRequestEmbedding } from "../lib/embedder-client";
 import { embedVocabInWorker } from "../lib/vocab-embedding";
 import { DEFAULT_CATEGORY_VOCABULARY, parseVocabulary } from "../lib/vocabulary";
 import type { DemoContext } from "../types";
@@ -20,7 +21,9 @@ export function CategorizeView({ ctx }: { ctx: DemoContext }) {
   const [error, setError] = useState<string | null>(null);
 
   const labels = useMemo(() => parseVocabulary(vocabInput), [vocabInput]);
-  const modelReady = embedder.status.phase === "ready";
+  // Classifying is also the trigger that lazily starts the model load, so this
+  // only excludes mid-load and error — "idle" stays submittable.
+  const canSubmit = canRequestEmbedding(embedder.status);
 
   async function classify() {
     if (labels.length === 0 || busy) return;
@@ -69,7 +72,7 @@ export function CategorizeView({ ctx }: { ctx: DemoContext }) {
         <button
           type="button"
           className="button button--primary"
-          disabled={busy || !modelReady || labels.length === 0}
+          disabled={busy || !canSubmit || labels.length === 0}
           onClick={() => void classify()}
         >
           {busy ? "Working…" : "Group by words"}

@@ -18,6 +18,11 @@ import {
 import type { Embedder, ImageInput, Vector } from "../types.js";
 import { configureNodeCacheDir } from "./node-cache-dir.js";
 
+// Re-exported so browser callers (only ever reached through this same lazy
+// `transformers-embedder` entry point) can override `env.backends.onnx.wasm.wasmPaths`
+// before the model loads, instead of it defaulting to cdn.jsdelivr.net.
+export { env };
+
 export interface EmbedderConfig {
   /** A SigLIP or CLIP model id (must contain "siglip" or "clip"). */
   modelId?: string;
