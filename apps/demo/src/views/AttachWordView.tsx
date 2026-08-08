@@ -29,6 +29,11 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
     setExemplarIds((current) =>
       current.includes(id) ? current.filter((other) => other !== id) : [...current, id],
     );
+    // Changing the selection retires the attachment: step 2 never ran for the
+    // photo just added, so propagating now would average it into the exemplar
+    // mean for a word it does not carry. Tags already written stay written —
+    // those were confirmed — but the word must be re-attached to continue.
+    setAttachedWord(null);
     setRows(null);
   }
 

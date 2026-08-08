@@ -5,8 +5,14 @@ function downloadJson(contents: string, filename: string): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  // Revoking in the same task cancels the download in some browsers, which have
+  // not yet read the blob when click() returns.
+  setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 0);
 }
 
 /** Persistence controls plus the note that this storage is demo-scoped, not the real write-back path. */

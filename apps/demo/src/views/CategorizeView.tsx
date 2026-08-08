@@ -120,8 +120,12 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
   const [k, setK] = useState(Math.min(4, Math.max(MIN_K, maxK)));
   const [open, setOpen] = useState(false);
 
+  // Silhouette scoring needs 2 <= k <= n-1, so an index of two items admits no
+  // valid k at all. Splitting two photos into groups says nothing anyway.
+  const canCluster = maxK >= MIN_K;
+
   const clusters = useMemo(() => {
-    if (!open || index.vectors.length < MIN_K) return null;
+    if (!open || !canCluster) return null;
     const { assignments } = clustering.kmeans(index.vectors, Math.min(k, maxK));
     const buckets = new Map<number, IndexItem[]>();
     assignments.forEach((cluster, i) => {
@@ -133,9 +137,9 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
   }, [open, index.vectors, index.items, k, maxK]);
 
   const suggested = useMemo(() => {
-    if (!open || index.vectors.length < 3) return null;
+    if (!open || !canCluster) return null;
     return clustering.suggestK(index.vectors, rangeOfK(maxK)).k;
-  }, [open, index.vectors, maxK]);
+  }, [open, canCluster, index.vectors, maxK]);
 
   return (
     <details
@@ -151,34 +155,41 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
         background rather than subject.
       </p>
 
-      <div className="toolbar">
-        <div className="field field--grow">
-          <label className="field__label" htmlFor="cluster-k">
-            Number of groups (k): {Math.min(k, maxK)}
-          </label>
-          <input
-            id="cluster-k"
-            className="field__range"
-            type="range"
-            min={MIN_K}
-            max={Math.max(MIN_K, maxK)}
-            step={1}
-            value={Math.min(k, maxK)}
-            onChange={(event) => setK(Number(event.target.value))}
-          />
+      {!canCluster ? (
+        <p className="view__empty">
+          This index holds {index.items.length} {index.items.length === 1 ? "photo" : "photos"} —
+          too few to split into groups. Clustering needs at least three.
+        </p>
+      ) : (
+        <div className="toolbar">
+          <div className="field field--grow">
+            <label className="field__label" htmlFor="cluster-k">
+              Number of groups (k): {Math.min(k, maxK)}
+            </label>
+            <input
+              id="cluster-k"
+              className="field__range"
+              type="range"
+              min={MIN_K}
+              max={maxK}
+              step={1}
+              value={Math.min(k, maxK)}
+              onChange={(event) => setK(Number(event.target.value))}
+            />
+            {suggested !== null && (
+              <p className="field__hint">
+                Highest silhouette score in this range is k={suggested} — a heuristic for how many
+                groups the data supports, not how many real categories exist.
+              </p>
+            )}
+          </div>
           {suggested !== null && (
-            <p className="field__hint">
-              Highest silhouette score in this range is k={suggested} — a heuristic for how many
-              groups the data supports, not how many real categories exist.
-            </p>
+            <button type="button" className="button button--quiet" onClick={() => setK(suggested)}>
+              Use k={suggested}
+            </button>
           )}
         </div>
-        {suggested !== null && (
-          <button type="button" className="button button--quiet" onClick={() => setK(suggested)}>
-            Use k={suggested}
-          </button>
-        )}
-      </div>
+      )}
 
       {clusters?.map(([cluster, items]) => (
         <div key={cluster} className="group">

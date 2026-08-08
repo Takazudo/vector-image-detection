@@ -24,7 +24,8 @@ export function SearchView({ ctx }: { ctx: DemoContext }) {
     setError(null);
     try {
       const [vector] = await embedder.embedTexts([text]);
-      setResults(await rankByVector(index.store, index.itemById, vector!, RESULT_LIMIT));
+      if (!vector) throw new Error("the embedder returned no vector for that query");
+      setResults(await rankByVector(index.store, index.itemById, vector, RESULT_LIMIT));
       setSubmitted(text);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));

@@ -34,9 +34,11 @@ export function App() {
     );
   }
 
-  // Keyed on index identity so every hook below rebuilds from scratch after a
-  // reload, rather than carrying state that belonged to the previous bundle.
-  return <Workspace key={state.index.meta.createdAt} index={state.index} />;
+  // Keyed on index identity — the same pair the tag storage key uses — so every
+  // hook below rebuilds from scratch after a reload rather than carrying state
+  // that belonged to the previous bundle.
+  const { modelId, createdAt } = state.index.meta;
+  return <Workspace key={`${modelId}:${createdAt}`} index={state.index} />;
 }
 
 function Workspace({ index }: { index: DemoIndex }) {
