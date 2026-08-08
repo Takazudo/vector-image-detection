@@ -64,6 +64,12 @@ describe("parseVlmResponse", () => {
     expect(() => parseVlmResponse('{"tags": [], "caption": "A box."}')).toThrow(VlmParseError);
   });
 
+  it("throws VlmParseError when a tag normalizes to an empty string", () => {
+    expect(() => parseVlmResponse('{"tags": ["box", "   "], "caption": "A box."}')).toThrow(
+      VlmParseError,
+    );
+  });
+
   it("throws VlmParseError when tags contains a non-string element", () => {
     expect(() => parseVlmResponse('{"tags": ["box", 5], "caption": "A box."}')).toThrow(
       VlmParseError,

@@ -50,8 +50,16 @@ export function parseVlmResponse(text: string): ParsedVlmTag {
     throw new VlmParseError('model response "readableText" must be a string when present');
   }
 
+  // A tag that is only whitespace (e.g. "   ") passes the string-array check
+  // above but normalizes to "" — reject it here rather than silently
+  // recording an empty tag, so this counts as malformed and gets retried.
+  const tags = raw.tags.map((tag) => tag.toLowerCase().trim());
+  if (tags.some((tag) => tag === "")) {
+    throw new VlmParseError('model response "tags" must not contain empty/whitespace-only strings');
+  }
+
   const parsed: ParsedVlmTag = {
-    tags: raw.tags.map((tag) => tag.toLowerCase().trim()),
+    tags,
     caption: raw.caption.trim(),
   };
   if (typeof raw.readableText === "string" && raw.readableText.trim() !== "") {
