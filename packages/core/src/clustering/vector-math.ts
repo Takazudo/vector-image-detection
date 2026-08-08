@@ -7,11 +7,16 @@ export function dot(a: Vector, b: Vector): number {
   return sum;
 }
 
-/** Returns a new L2-normalized copy of `vec` (zero vector maps to itself, guarding div-by-zero). */
-export function normalizeVector(vec: Float32Array): Float32Array {
+/** L2 (Euclidean) norm/magnitude of `vec`. */
+export function vectorNorm(vec: Float32Array): number {
   let sumSquares = 0;
   for (const value of vec) sumSquares += value * value;
-  const norm = Math.sqrt(sumSquares) || 1;
+  return Math.sqrt(sumSquares);
+}
+
+/** Returns a new L2-normalized copy of `vec` (zero vector maps to itself, guarding div-by-zero). */
+export function normalizeVector(vec: Float32Array): Float32Array {
+  const norm = vectorNorm(vec) || 1;
   const out = new Float32Array(vec.length);
   for (let i = 0; i < vec.length; i++) out[i] = (vec[i] ?? 0) / norm;
   return out;

@@ -57,6 +57,24 @@ function kmeansPlusPlusInit(vectors: Vector[], k: number, rand: () => number): F
   return centroids;
 }
 
+/** Assigns each vector to the index of its nearest (highest cosine similarity) centroid. */
+function assignNearest(vectors: Vector[], centroids: Float32Array[]): number[] {
+  const assignments = new Array<number>(vectors.length);
+  for (let i = 0; i < vectors.length; i++) {
+    let best = 0;
+    let bestSim = -Infinity;
+    for (let c = 0; c < centroids.length; c++) {
+      const sim = dot(vectors[i]!, centroids[c]!);
+      if (sim > bestSim) {
+        bestSim = sim;
+        best = c;
+      }
+    }
+    assignments[i] = best;
+  }
+  return assignments;
+}
+
 /**
  * Spherical k-means over L2-normalized vectors: cosine similarity is the
  * affinity (a plain dot product, since inputs are normalized), centroids
@@ -96,20 +114,7 @@ export function kmeans(vectors: Vector[], k: number, opts: KMeansOptions = {}): 
   let assignments = new Array<number>(n).fill(-1);
 
   for (let iter = 0; iter < maxIter; iter++) {
-    const newAssignments = new Array<number>(n);
-    for (let i = 0; i < n; i++) {
-      let best = 0;
-      let bestSim = -Infinity;
-      for (let c = 0; c < k; c++) {
-        const sim = dot(vectors[i]!, centroids[c]!);
-        if (sim > bestSim) {
-          bestSim = sim;
-          best = c;
-        }
-      }
-      newAssignments[i] = best;
-    }
-
+    const newAssignments = assignNearest(vectors, centroids);
     const changed = newAssignments.some((c, i) => c !== assignments[i]);
     assignments = newAssignments;
     if (!changed) break;
@@ -126,18 +131,29 @@ export function kmeans(vectors: Vector[], k: number, opts: KMeansOptions = {}): 
 
     centroids = centroids.map((_prev, c) => {
       const count = counts[c] ?? 0;
-      if (count === 0) {
-        // Empty cluster: reseed deterministically from a random input
-        // vector rather than leaving a dead centroid (standard Lloyd's
-        // remedy), using the same seeded PRNG as everything else here.
+      const sum = sums[c]!;
+      // A cluster reseeds deterministically from a random input vector,
+      // rather than keeping a degenerate centroid, when it is either empty
+      // or its members sum to (near) the zero vector — e.g. exactly
+      // antipodal points — which `normalizeVector` cannot turn into a
+      // meaningful unit vector (standard Lloyd's remedy, extended to cover
+      // the zero-sum case).
+      let sumNormSq = 0;
+      for (const value of sum) sumNormSq += value * value;
+      if (count === 0 || sumNormSq === 0) {
         return normalizeVector(Float32Array.from(vectors[Math.floor(rand() * n)]!));
       }
-      const sum = sums[c]!;
       const avg = new Float32Array(dim);
       for (let d = 0; d < dim; d++) avg[d] = (sum[d] ?? 0) / count;
       return normalizeVector(avg);
     });
   }
+
+  // If maxIter was reached before convergence, `assignments` reflects the
+  // second-to-last centroids while `centroids` was already advanced one
+  // more update — resync so the returned assignments always match the
+  // returned centroids exactly.
+  assignments = assignNearest(vectors, centroids);
 
   let inertia = 0;
   for (let i = 0; i < n; i++) {

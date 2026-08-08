@@ -63,4 +63,34 @@ describe("kmeans", () => {
   it("rejects empty input", () => {
     expect(() => kmeans([], 2)).toThrow();
   });
+
+  it("returns assignments consistent with the returned centroids, even when maxIter cuts off before convergence", () => {
+    const { vectors } = makeBlobs(CENTERS, 20, { seed: 7, jitter: 0.05 });
+    // maxIter: 1 forces a stop well before convergence, which is exactly
+    // the case where a stale assignments/centroids pairing would surface.
+    const { assignments, centroids } = kmeans(vectors, 3, { seed: 42, maxIter: 1 });
+    for (let i = 0; i < vectors.length; i++) {
+      let best = 0;
+      let bestSim = -Infinity;
+      for (let c = 0; c < centroids.length; c++) {
+        const sim = centroids[c]!.reduce((sum, v, d) => sum + v * (vectors[i]![d] ?? 0), 0);
+        if (sim > bestSim) {
+          bestSim = sim;
+          best = c;
+        }
+      }
+      expect(assignments[i]).toBe(best);
+    }
+  });
+
+  it("reseeds instead of returning a zero-length centroid when a cluster's members exactly cancel", () => {
+    // With k=1 every point lands in the same cluster; these two antipodal
+    // points sum to the zero vector, which normalizeVector alone cannot
+    // turn into a meaningful unit centroid.
+    const vectors = [new Float32Array([1, 0]), new Float32Array([-1, 0])];
+    const { centroids } = kmeans(vectors, 1, { seed: 42 });
+    let sumSquares = 0;
+    for (const value of centroids[0]!) sumSquares += value * value;
+    expect(Math.sqrt(sumSquares)).toBeCloseTo(1, 5);
+  });
 });
