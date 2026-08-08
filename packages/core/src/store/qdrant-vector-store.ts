@@ -105,7 +105,10 @@ export class QdrantVectorStore implements VectorStore {
   async delete(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     await this.ensureCollection();
-    await this.client.delete(this.collection, { points: ids.map(toQdrantPointId) });
+    // wait: true (as with upsert above) so the deletion is applied before
+    // this resolves — otherwise an immediately-following search()/count()
+    // could still observe the deleted points.
+    await this.client.delete(this.collection, { wait: true, points: ids.map(toQdrantPointId) });
   }
 
   async count(): Promise<number> {

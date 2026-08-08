@@ -38,11 +38,25 @@ function toArrayBuffer(buffer: Buffer): ArrayBuffer {
 }
 
 /**
- * Writes an index bundle (`meta.json` + `embeddings.bin`) to `dir`,
- * atomically: both `.tmp` files are written first, then both are renamed
- * into place. A failure at any point leaves the directory either fully at
- * its previous state or fully at the new state — never a partially-written
- * `meta.json`/`embeddings.bin`, and no leftover `.tmp` files.
+ * Writes an index bundle (`meta.json` + `embeddings.bin`) to `dir`. Each file
+ * is published atomically (write `.tmp`, then `rename` over the final path —
+ * `rename` is an atomic swap on POSIX), and both `.tmp` files are written
+ * before either is renamed, so the two renames land back-to-back. A failure
+ * during the write phase (before any rename) leaves both final files fully
+ * untouched, with no leftover `.tmp` files — this is what the accompanying
+ * tests exercise.
+ *
+ * This does **not** make the two-file bundle transactional as a pair: on
+ * POSIX, `rename()` only guarantees atomicity for a single file, not for two
+ * files together. If the process is killed between the two renames (or one
+ * rename fails while the other has already landed), `dir` can briefly or
+ * persistently hold new `meta.json` paired with old `embeddings.bin` (or
+ * vice versa). `decodeVectors` catches the common case where this changes
+ * `items.length` (a hard byte-length mismatch), but a same-item-count resave
+ * torn between the two renames is not detected. A fully torn-proof bundle
+ * publish (e.g. a directory-level atomic swap) is a larger layout change
+ * than the frozen `dir/meta.json` + `dir/embeddings.bin` contract calls for
+ * here — flag it for a follow-up if airtight cross-file atomicity is needed.
  */
 export async function saveIndex(dir: string, meta: IndexMeta, vectors: Vector[]): Promise<void> {
   if (meta.items.length !== vectors.length) {

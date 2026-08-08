@@ -80,6 +80,17 @@ describe("loadIndexFromUrl", () => {
     ]);
   });
 
+  it("accepts a site-relative baseUrl (not just absolute URLs)", async () => {
+    // `new URL(file, base)` would throw "Invalid URL" for a relative base
+    // like this — plain string concatenation must be used instead.
+    const meta = sampleMeta();
+    const { impl, calls } = fakeFetch(meta, sampleVectors());
+
+    const loaded = await loadIndexFromUrl("/data/index", impl);
+    expect(loaded.meta).toEqual(meta);
+    expect(calls).toEqual(["/data/index/meta.json", "/data/index/embeddings.bin"]);
+  });
+
   it("throws IndexModelMismatchError when expected modelId/dim disagrees", async () => {
     const { impl } = fakeFetch(sampleMeta(), sampleVectors());
     await expect(

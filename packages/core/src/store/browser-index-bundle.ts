@@ -20,14 +20,20 @@ export async function loadIndexFromUrl(
 ): Promise<{ meta: IndexMeta; vectors: Vector[] }> {
   const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 
-  const metaResponse = await fetchImpl(new URL("meta.json", base));
+  // Plain string concatenation rather than `new URL(file, base)`: the WHATWG
+  // URL constructor requires `base` to be an absolute URL, which rejects the
+  // site-relative ("/data/index") or document-relative ("data/index") paths
+  // browser callers commonly pass. `fetch` itself already resolves relative
+  // URL strings against the document, so there's nothing to gain from
+  // constructing a URL object here.
+  const metaResponse = await fetchImpl(`${base}meta.json`);
   if (!metaResponse.ok) {
     throw new Error(`loadIndexFromUrl: failed to fetch meta.json (${metaResponse.status})`);
   }
   const meta = (await metaResponse.json()) as IndexMeta;
   assertModelMatch(meta, expected);
 
-  const embeddingsResponse = await fetchImpl(new URL("embeddings.bin", base));
+  const embeddingsResponse = await fetchImpl(`${base}embeddings.bin`);
   if (!embeddingsResponse.ok) {
     throw new Error(
       `loadIndexFromUrl: failed to fetch embeddings.bin (${embeddingsResponse.status})`,
