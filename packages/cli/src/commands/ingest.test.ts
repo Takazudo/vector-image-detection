@@ -152,4 +152,22 @@ describe("vis ingest", () => {
     // The tagged meta must survive untouched — no silent tag wipe.
     expect(await fs.readFile(metaPath, "utf8")).toBe(metaBefore);
   });
+
+  it("aborts re-ingest when embeddings.bin is missing but the tagged meta.json exists", async () => {
+    const { deps } = fakeDeps({ rootDir: fixture.rootDir });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], deps)).toBe(0);
+    await runCli(["tag", "vocab", "cat", "dog", "--index", "demo", "--apply"], deps);
+
+    const indexDir = path.join(fixture.rootDir, "data", "indexes", "demo");
+    const metaPath = path.join(indexDir, "meta.json");
+    const metaBefore = await fs.readFile(metaPath, "utf8");
+
+    // Delete the binary entirely — loadIndex ENOENTs, but meta.json still
+    // carries confirmed tags, so this must NOT be treated as a fresh index.
+    await fs.rm(path.join(indexDir, "embeddings.bin"));
+
+    const retry = fakeDeps({ rootDir: fixture.rootDir });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], retry.deps)).not.toBe(0);
+    expect(await fs.readFile(metaPath, "utf8")).toBe(metaBefore);
+  });
 });

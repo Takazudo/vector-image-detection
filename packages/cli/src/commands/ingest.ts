@@ -55,11 +55,17 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
       // vocab`/`propagate`/`vlm`) must not silently discard them — carry
       // forward by item id from any existing bundle at this indexDir.
       const existingTagsById = new Map<string, string[]>();
-      // Only a genuinely missing index means "fresh ingest". Any other load
-      // failure (corrupt bin, unreadable meta) must abort — proceeding would
-      // rebuild with empty tags and silently destroy confirmed tag data.
-      const existing = await store.loadIndex(indexDir).catch((error: unknown) => {
-        if ((error as NodeJS.ErrnoException | null)?.code === "ENOENT") return null;
+      // Only a genuinely missing index means "fresh ingest". meta.json is the
+      // tag-bearing file, so its presence forbids a silent rebuild: any load
+      // failure while it exists (corrupt or deleted embeddings.bin, unreadable
+      // meta) must abort — proceeding would rebuild with empty tags and
+      // silently destroy confirmed tag data.
+      const existing = await store.loadIndex(indexDir).catch(async (error: unknown) => {
+        const metaExists = await fs
+          .access(path.join(indexDir, "meta.json"))
+          .then(() => true)
+          .catch(() => false);
+        if (!metaExists && (error as NodeJS.ErrnoException | null)?.code === "ENOENT") return null;
         throw new Error(
           `ingest: existing index at "${path.relative(deps.rootDir, indexDir)}" could not be ` +
             `loaded (${error instanceof Error ? error.message : String(error)}). ` +
