@@ -1,0 +1,25 @@
+---
+title: デモと手元の写真
+description: ブラウザーの操作、タグの保存範囲、自分の写真の取り込み
+sidebar_position: 2
+---
+
+## デモを使う
+
+[ホスト済みデモ](https://vector-image-detection.takazudomodular.com) は、事前計算済み bundle をブラウザーで読み込みます。Gallery、Auto-categorize、Search、Similar、Vocabulary tags、Attach a word を操作できます。デモにはサーバーコンポーネントがありません。
+
+デモで確認したタグは、`modelId` と `createdAt` で区別したブラウザーの `localStorage` にだけ保存されます。別 bundle には混ざりませんが、実運用の永続化ではありません。JSON export と reset を使えます。本当に保存するには CLI のタグ機能で bundle を更新するか、データベースを実装してください。
+
+## 自分の写真を取り込む
+
+```sh
+pnpm vis ingest ~/photos/inventory --index inventory
+pnpm vis search "blue connector with six pins" --index inventory -k 10
+pnpm vis similar ./some/external/photo.jpg --index inventory -k 5
+pnpm vis export-demo --index inventory
+pnpm demo:dev
+```
+
+インデックス済みの item ID を `similar` に渡すと、その item 自身を除いた近傍が返ります。ID にないパスを渡すと外部画像を新たに埋め込みます。写真のパスは bundle に相対パスとして記録されますが、元写真を配信する機能ではありません。デモへ出力されるのは `meta.json`、`embeddings.bin`、サムネイルです。
+
+実データの候補・タグ・分類は必ず人が確認してください。とくに専門部品や細かい型番では、一般画像モデルの結果を正解として扱えません。

@@ -36,6 +36,13 @@ export default defineConfig(
       links: [],
       copyright: "Copyright © 2026 Vector Image Detection.",
     },
+    headerNav: [
+      { label: "概要", path: "/docs/overview", categoryMatch: "overview" },
+      { label: "はじめる", path: "/docs/getting-started", categoryMatch: "getting-started" },
+      { label: "仕組み", path: "/docs/concepts", categoryMatch: "concepts" },
+      { label: "使い方", path: "/docs/guides", categoryMatch: "guides" },
+      { label: "リファレンス", path: "/docs/reference", categoryMatch: "reference" },
+    ],
     headerRightItems: [
       { type: "component", component: "github-link" },
       { type: "component", component: "theme-toggle" },
