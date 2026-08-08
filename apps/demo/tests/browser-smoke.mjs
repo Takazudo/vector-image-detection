@@ -1,13 +1,20 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 4397;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
+const execFileAsync = promisify(execFile);
+
+await execFileAsync("pnpm", ["run", "fixture"], { cwd: ROOT });
+await execFileAsync("pnpm", ["run", "build"], { cwd: ROOT, maxBuffer: 16 * 1024 * 1024 });
+
 const preview = spawn(
   "pnpm",
   ["exec", "zfb", "preview", "--host", "127.0.0.1", "--port", String(PORT)],
@@ -17,9 +24,10 @@ const preview = spawn(
   },
 );
 
-const browser = await chromium.launch();
+let browser;
 try {
   await waitForPreview();
+  browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const failures = [];
   const requested = [];
@@ -84,7 +92,7 @@ try {
     );
   }
 } finally {
-  await browser.close();
+  await browser?.close();
   preview.kill("SIGTERM");
   await Promise.race([once(preview, "exit"), new Promise((resolve) => setTimeout(resolve, 2_000))]);
 }
