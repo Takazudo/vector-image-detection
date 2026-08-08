@@ -12,6 +12,7 @@ import {
   type PreTrainedModel,
   type PreTrainedTokenizer,
   type Processor,
+  type ProgressCallback,
   type Tensor,
 } from "@huggingface/transformers";
 import type { Embedder, ImageInput, Vector } from "../types.js";
@@ -24,6 +25,12 @@ export interface EmbedderConfig {
   dim?: number;
   dtype?: DataType;
   device?: DeviceType;
+  /**
+   * Forwarded verbatim to transformers.js `from_pretrained` — the only way to
+   * observe weight-download progress, which a browser caller needs to show a
+   * loading UI for a ~100MB first load. Fires per file, for both towers.
+   */
+  onProgress?: ProgressCallback;
 }
 
 const DEFAULT_MODEL_ID = "Xenova/siglip-base-patch16-224";
@@ -76,18 +83,20 @@ class TransformersEmbedder implements Embedder {
   private readonly architecture: Architecture;
   private readonly dtype: DataType;
   private readonly device: DeviceType | undefined;
+  private readonly onProgress: ProgressCallback | undefined;
 
   private visionTower: Promise<VisionTower> | undefined;
   private textTower: Promise<TextTower> | undefined;
 
   constructor(
     config: Required<Pick<EmbedderConfig, "modelId" | "dim" | "dtype">> &
-      Pick<EmbedderConfig, "device">,
+      Pick<EmbedderConfig, "device" | "onProgress">,
   ) {
     this.modelId = config.modelId;
     this.dim = config.dim;
     this.dtype = config.dtype;
     this.device = config.device;
+    this.onProgress = config.onProgress;
     this.architecture = resolveArchitecture(config.modelId);
   }
 
@@ -100,8 +109,12 @@ class TransformersEmbedder implements Embedder {
       const VisionModel =
         this.architecture === "siglip" ? SiglipVisionModel : CLIPVisionModelWithProjection;
       const [model, processor] = await Promise.all([
-        VisionModel.from_pretrained(this.modelId, { dtype: this.dtype, device: this.device }),
-        AutoProcessor.from_pretrained(this.modelId),
+        VisionModel.from_pretrained(this.modelId, {
+          dtype: this.dtype,
+          device: this.device,
+          progress_callback: this.onProgress,
+        }),
+        AutoProcessor.from_pretrained(this.modelId, { progress_callback: this.onProgress }),
       ]);
       return { model, processor };
     })();
@@ -114,8 +127,12 @@ class TransformersEmbedder implements Embedder {
       const TextModel =
         this.architecture === "siglip" ? SiglipTextModel : CLIPTextModelWithProjection;
       const [model, tokenizer] = await Promise.all([
-        TextModel.from_pretrained(this.modelId, { dtype: this.dtype, device: this.device }),
-        AutoTokenizer.from_pretrained(this.modelId),
+        TextModel.from_pretrained(this.modelId, {
+          dtype: this.dtype,
+          device: this.device,
+          progress_callback: this.onProgress,
+        }),
+        AutoTokenizer.from_pretrained(this.modelId, { progress_callback: this.onProgress }),
       ]);
       return { model, tokenizer };
     })();
@@ -155,5 +172,11 @@ export function createEmbedder(config: EmbedderConfig = {}): Embedder {
   const modelId = config.modelId ?? DEFAULT_MODEL_ID;
   const dim = config.dim ?? DEFAULT_DIM;
   const dtype = config.dtype ?? DEFAULT_DTYPE;
-  return new TransformersEmbedder({ modelId, dim, dtype, device: config.device });
+  return new TransformersEmbedder({
+    modelId,
+    dim,
+    dtype,
+    device: config.device,
+    onProgress: config.onProgress,
+  });
 }

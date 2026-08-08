@@ -20,6 +20,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@vector-image-detection/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -39,6 +42,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.4
         version: 6.0.5(vite@8.2.1(@types/node@24.13.3))
+      sharp:
+        specifier: ^0.35.3
+        version: 0.35.3(@types/node@24.13.3)
       vite:
         specifier: ^8.2.0
         version: 8.2.1(@types/node@24.13.3)

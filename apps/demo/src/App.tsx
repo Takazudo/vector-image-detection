@@ -1,102 +1,105 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
-import heroImg from "./assets/hero.png";
-import "./App.css";
+import { useCallback, useMemo, useState } from "react";
+import { EmbedderStatusBar } from "./components/EmbedderStatusBar";
+import { MissingBundle } from "./components/MissingBundle";
+import { SimilarPanel } from "./components/SimilarPanel";
+import { TagStoreBar } from "./components/TagStoreBar";
+import { useDemoIndex } from "./hooks/use-demo-index";
+import { useEmbedder } from "./hooks/use-embedder";
+import { useStoreTagSync } from "./hooks/use-store-tag-sync";
+import { useTagOverlay } from "./hooks/use-tag-overlay";
+import type { DemoIndex } from "./lib/index-data";
+import { VIEWS, type DemoContext, type ViewId } from "./types";
+import { AttachWordView } from "./views/AttachWordView";
+import { CategorizeView } from "./views/CategorizeView";
+import { GalleryView } from "./views/GalleryView";
+import { SearchView } from "./views/SearchView";
+import { VocabTagsView } from "./views/VocabTagsView";
 
-function App() {
-  const [count, setCount] = useState(0);
+export function App() {
+  const state = useDemoIndex();
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button type="button" className="counter" onClick={() => setCount((count) => count + 1)}>
-          Count is {count}
-        </button>
-      </section>
+  if (state.phase === "loading") {
+    return (
+      <main className="app app--centered">
+        <p className="app__loading">Loading the index bundle&hellip;</p>
+      </main>
+    );
+  }
 
-      <div className="ticks"></div>
+  if (state.phase === "missing") {
+    return (
+      <main className="app app--centered">
+        <MissingBundle message={state.message} onRetry={state.reload} />
+      </main>
+    );
+  }
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  );
+  // Keyed on index identity so every hook below rebuilds from scratch after a
+  // reload, rather than carrying state that belonged to the previous bundle.
+  return <Workspace key={state.index.meta.createdAt} index={state.index} />;
 }
 
-export default App;
+function Workspace({ index }: { index: DemoIndex }) {
+  const [view, setView] = useState<ViewId>("gallery");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const tags = useTagOverlay(index.meta);
+  const embedder = useEmbedder(index.meta);
+  useStoreTagSync(index, tags.overlay);
+
+  const onSelect = useCallback(
+    (id: string) => setSelectedId((current) => (current === id ? null : id)),
+    [],
+  );
+
+  const ctx = useMemo<DemoContext>(
+    () => ({ index, tags, embedder, selectedId, onSelect }),
+    [index, tags, embedder, selectedId, onSelect],
+  );
+
+  const showPanel = selectedId !== null && view !== "attach";
+
+  return (
+    <div className="app">
+      <header className="masthead">
+        <div className="masthead__brand">
+          <h1 className="masthead__title">Photo vector search</h1>
+          <p className="masthead__subtitle">
+            {index.items.length} photos &middot; {index.meta.dim}-dimensional vectors &middot;{" "}
+            <code>{index.meta.modelId}</code>
+          </p>
+        </div>
+        <nav className="masthead__nav" aria-label="Views">
+          {VIEWS.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={`tab${view === entry.id ? " tab--active" : ""}`}
+              aria-current={view === entry.id ? "page" : undefined}
+              onClick={() => setView(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <EmbedderStatusBar status={embedder.status} />
+      <TagStoreBar tags={tags} />
+
+      {/* In "attach" a photo click picks an exemplar rather than a neighbour query,
+          so that view owns its own selection and gets no side panel. */}
+      <div className={`workspace${showPanel ? " workspace--with-panel" : ""}`}>
+        <main className="workspace__main">
+          {view === "gallery" && <GalleryView ctx={ctx} />}
+          {view === "categorize" && <CategorizeView ctx={ctx} />}
+          {view === "search" && <SearchView ctx={ctx} />}
+          {view === "vocab-tags" && <VocabTagsView ctx={ctx} />}
+          {view === "attach" && <AttachWordView ctx={ctx} />}
+        </main>
+
+        {showPanel && <SimilarPanel ctx={ctx} onClose={() => setSelectedId(null)} />}
+      </div>
+    </div>
+  );
+}

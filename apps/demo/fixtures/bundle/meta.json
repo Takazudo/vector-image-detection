@@ -1,0 +1,230 @@
+{
+  "formatVersion": 1,
+  "modelId": "fake-embedder-v1",
+  "dim": 32,
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "items": [
+    {
+      "id": "cat/cat-01.png",
+      "file": "cat/cat-01.png",
+      "thumb": "thumbs/cat/cat-01.png.jpg",
+      "knownLabel": "cat",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "cat/cat-02.png",
+      "file": "cat/cat-02.png",
+      "thumb": "thumbs/cat/cat-02.png.jpg",
+      "knownLabel": "cat",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "cat/cat-03.png",
+      "file": "cat/cat-03.png",
+      "thumb": "thumbs/cat/cat-03.png.jpg",
+      "knownLabel": "cat",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "cat/cat-04.png",
+      "file": "cat/cat-04.png",
+      "thumb": "thumbs/cat/cat-04.png.jpg",
+      "knownLabel": "cat",
+      "tags": []
+    },
+    {
+      "id": "dog/dog-01.png",
+      "file": "dog/dog-01.png",
+      "thumb": "thumbs/dog/dog-01.png.jpg",
+      "knownLabel": "dog",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "dog/dog-02.png",
+      "file": "dog/dog-02.png",
+      "thumb": "thumbs/dog/dog-02.png.jpg",
+      "knownLabel": "dog",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "dog/dog-03.png",
+      "file": "dog/dog-03.png",
+      "thumb": "thumbs/dog/dog-03.png.jpg",
+      "knownLabel": "dog",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "dog/dog-04.png",
+      "file": "dog/dog-04.png",
+      "thumb": "thumbs/dog/dog-04.png.jpg",
+      "knownLabel": "dog",
+      "tags": []
+    },
+    {
+      "id": "capacitor/capacitor-01.png",
+      "file": "capacitor/capacitor-01.png",
+      "thumb": "thumbs/capacitor/capacitor-01.png.jpg",
+      "knownLabel": "capacitor",
+      "tags": ["through-hole"],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "capacitor/capacitor-02.png",
+      "file": "capacitor/capacitor-02.png",
+      "thumb": "thumbs/capacitor/capacitor-02.png.jpg",
+      "knownLabel": "capacitor",
+      "tags": ["through-hole"],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "capacitor/capacitor-03.png",
+      "file": "capacitor/capacitor-03.png",
+      "thumb": "thumbs/capacitor/capacitor-03.png.jpg",
+      "knownLabel": "capacitor",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "capacitor/capacitor-04.png",
+      "file": "capacitor/capacitor-04.png",
+      "thumb": "thumbs/capacitor/capacitor-04.png.jpg",
+      "knownLabel": "capacitor",
+      "tags": []
+    },
+    {
+      "id": "resistor/resistor-01.png",
+      "file": "resistor/resistor-01.png",
+      "thumb": "thumbs/resistor/resistor-01.png.jpg",
+      "knownLabel": "resistor",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "resistor/resistor-02.png",
+      "file": "resistor/resistor-02.png",
+      "thumb": "thumbs/resistor/resistor-02.png.jpg",
+      "knownLabel": "resistor",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "resistor/resistor-03.png",
+      "file": "resistor/resistor-03.png",
+      "thumb": "thumbs/resistor/resistor-03.png.jpg",
+      "knownLabel": "resistor",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "resistor/resistor-04.png",
+      "file": "resistor/resistor-04.png",
+      "thumb": "thumbs/resistor/resistor-04.png.jpg",
+      "knownLabel": "resistor",
+      "tags": []
+    },
+    {
+      "id": "led/led-01.png",
+      "file": "led/led-01.png",
+      "thumb": "thumbs/led/led-01.png.jpg",
+      "knownLabel": "led",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "led/led-02.png",
+      "file": "led/led-02.png",
+      "thumb": "thumbs/led/led-02.png.jpg",
+      "knownLabel": "led",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "led/led-03.png",
+      "file": "led/led-03.png",
+      "thumb": "thumbs/led/led-03.png.jpg",
+      "knownLabel": "led",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "led/led-04.png",
+      "file": "led/led-04.png",
+      "thumb": "thumbs/led/led-04.png.jpg",
+      "knownLabel": "led",
+      "tags": []
+    },
+    {
+      "id": "connector/connector-01.png",
+      "file": "connector/connector-01.png",
+      "thumb": "thumbs/connector/connector-01.png.jpg",
+      "knownLabel": "connector",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "connector/connector-02.png",
+      "file": "connector/connector-02.png",
+      "thumb": "thumbs/connector/connector-02.png.jpg",
+      "knownLabel": "connector",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "connector/connector-03.png",
+      "file": "connector/connector-03.png",
+      "thumb": "thumbs/connector/connector-03.png.jpg",
+      "knownLabel": "connector",
+      "tags": [],
+      "source": "https://github.com/Takazudo/vector-image-detection",
+      "license": "CC0-1.0",
+      "author": "vector-image-detection fixture generator"
+    },
+    {
+      "id": "connector/connector-04.png",
+      "file": "connector/connector-04.png",
+      "thumb": "thumbs/connector/connector-04.png.jpg",
+      "knownLabel": "connector",
+      "tags": []
+    }
+  ]
+}

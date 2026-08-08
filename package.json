@@ -12,7 +12,9 @@
     "test:scripts": "node --test scripts/lib/*.node-test.mjs",
     "build": "pnpm -r run build",
     "format": "prettier --write .",
-    "fetch-samples": "node scripts/fetch-samples.mjs"
+    "fetch-samples": "node scripts/fetch-samples.mjs",
+    "demo:fixture": "pnpm --filter @vector-image-detection/demo run fixture",
+    "demo:dev": "pnpm --filter @vector-image-detection/demo run dev"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
