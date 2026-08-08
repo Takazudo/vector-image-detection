@@ -4,3 +4,7 @@ data/
 apps/demo/public/data/
 *.log
 .DS_Store
+worktrees/
+.cache/
+coverage/
+*.tsbuildinfo

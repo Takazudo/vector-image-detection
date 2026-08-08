@@ -1,0 +1,36 @@
+{
+  "name": "@vector-image-detection/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    },
+    "./transformers-embedder": {
+      "types": "./dist/embedding/create-embedder.d.ts",
+      "default": "./dist/embedding/create-embedder.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.2.0",
+    "@qdrant/js-client-rest": "^1.19.0"
+  }
+}
