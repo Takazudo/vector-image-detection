@@ -20,5 +20,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.2.0"
   }
 }
