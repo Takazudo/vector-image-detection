@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { PhotoCard } from "../components/PhotoCard";
+import { canRequestEmbedding } from "../lib/embedder-client";
 import { rankByVector, type RankedItem } from "../lib/search";
 import type { DemoContext } from "../types";
 
@@ -13,7 +14,10 @@ export function SearchView({ ctx }: { ctx: DemoContext }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const modelReady = embedder.status.phase === "ready";
+  // Submitting is also the trigger that lazily starts the model load (see
+  // EmbedderClient.embedTexts), so this only excludes mid-load and error —
+  // "idle" stays submittable.
+  const canSubmit = canRequestEmbedding(embedder.status);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -63,13 +67,13 @@ export function SearchView({ ctx }: { ctx: DemoContext }) {
         <button
           type="submit"
           className="button button--primary"
-          disabled={busy || !modelReady || query.trim().length === 0}
+          disabled={busy || !canSubmit || query.trim().length === 0}
         >
           {busy ? "Embedding…" : "Search"}
         </button>
       </form>
 
-      {!modelReady && embedder.status.phase === "loading" && (
+      {embedder.status.phase === "loading" && (
         <p className="view__note">Waiting for the text embedder to finish loading&hellip;</p>
       )}
       {error && <p className="view__error">Search failed: {error}</p>}

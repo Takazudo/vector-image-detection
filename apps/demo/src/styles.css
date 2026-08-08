@@ -20,7 +20,11 @@
   --palette-gray-2: oklch(94% 0.005 265);
   --palette-gray-3: oklch(88% 0.007 265);
   --palette-gray-4: oklch(72% 0.011 265);
-  --palette-gray-5: oklch(56% 0.013 265);
+  /* 53% (not the ladder's usual round step) is the darkest value that still
+     reads as "muted" while clearing WCAG AA 4.5:1 for --theme-fg-muted text
+     against --theme-bg (4.84:1) and --theme-surface (5.28:1) — 56% measured
+     4.27:1 against --theme-bg, just under the threshold. */
+  --palette-gray-5: oklch(53% 0.013 265);
   --palette-gray-6: oklch(43% 0.014 265);
   --palette-gray-7: oklch(29% 0.015 265);
   --palette-gray-8: oklch(19% 0.014 265);
@@ -219,6 +223,23 @@ code {
 
 .embedder-status--error {
   color: var(--theme-danger);
+}
+
+.embedder-status__load {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--theme-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.embedder-status__load:hover {
+  color: var(--theme-accent-hover);
 }
 
 .embedder-status__badge {

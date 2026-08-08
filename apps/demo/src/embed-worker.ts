@@ -11,7 +11,28 @@ import {
   type WorkerResponse,
 } from "./lib/embedder-protocol";
 
+// transformers.js's onnx backend defaults `env.backends.onnx.wasm.wasmPaths` to
+// cdn.jsdelivr.net (see its backends/onnx.js) unless something sets it first.
+// Re-host the same onnxruntime-web build it depends on internally so the WASM
+// runtime is served from this origin instead — these are `?url` imports (just
+// resolved URL strings), so importing them here doesn't fetch any bytes.
+import ortWasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.wasm?url";
+import ortWasmMjsUrl from "onnxruntime-web/ort-wasm-simd-threaded.mjs?url";
+import ortWasmAsyncifyUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
+import ortWasmAsyncifyMjsUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url";
+
 const scope = self as unknown as DedicatedWorkerGlobalScope;
+
+// Mirrors transformers.js's own (unexported) Safari check: Safari gets the
+// plain build, every other browser gets the asyncify build — matching which
+// variant its cdn.jsdelivr.net fallback would otherwise have picked.
+function isSafari(): boolean {
+  const vendor = navigator.vendor ?? "";
+  return (
+    vendor.includes("Apple") &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS|mercury|brave|Chrome|Android/i.test(navigator.userAgent)
+  );
+}
 
 function post(message: WorkerResponse): void {
   scope.postMessage(message);
@@ -38,7 +59,21 @@ async function createEmbedderFor(modelId: string, dim: number): Promise<Embedder
 
   // Dynamic import so the transformers.js runtime is fetched only when the
   // bundle actually needs a real model — a fixture visit downloads none of it.
-  const { createEmbedder } = await import("@vector-image-detection/core/transformers-embedder");
+  // `env` comes from this same lazy module (re-exported by create-embedder.ts)
+  // so importing it here doesn't pull transformers.js in any earlier than
+  // `createEmbedder` already does.
+  const { createEmbedder, env } =
+    await import("@vector-image-detection/core/transformers-embedder");
+
+  // `env.backends.onnx.wasm` is populated by transformers.js's own onnx backend
+  // as an import-time side effect (which is also what sets the cdn.jsdelivr.net
+  // default we're overriding here), so it's already a real object by this point.
+  if (env.backends.onnx.wasm) {
+    env.backends.onnx.wasm.wasmPaths = isSafari()
+      ? { wasm: ortWasmUrl, mjs: ortWasmMjsUrl }
+      : { wasm: ortWasmAsyncifyUrl, mjs: ortWasmAsyncifyMjsUrl };
+  }
+
   return createEmbedder({ modelId, dim, onProgress: reportProgress });
 }
 

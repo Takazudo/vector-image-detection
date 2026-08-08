@@ -42,6 +42,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.4
         version: 6.0.5(vite@8.2.1(@types/node@24.13.3))
+      onnxruntime-web:
+        specifier: 1.26.0-dev.20260416-b7804b056c
+        version: 1.26.0-dev.20260416-b7804b056c
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@24.13.3)

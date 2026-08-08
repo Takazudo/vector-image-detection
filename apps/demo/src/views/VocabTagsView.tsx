@@ -5,6 +5,7 @@ import { AttributionPopover } from "../components/AttributionPopover";
 import { ScoreBar } from "../components/ScoreBar";
 import { TagChip } from "../components/TagChip";
 import { VocabularyField } from "../components/VocabularyField";
+import { canRequestEmbedding } from "../lib/embedder-client";
 import { embedderModeFor } from "../lib/embedder-protocol";
 import { itemLabel } from "../lib/format";
 import { embedVocabInWorker } from "../lib/vocab-embedding";
@@ -28,7 +29,9 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
   const [error, setError] = useState<string | null>(null);
 
   const labels = useMemo(() => parseVocabulary(vocabInput), [vocabInput]);
-  const modelReady = embedder.status.phase === "ready";
+  // Scoring is also the trigger that lazily starts the model load, so this
+  // only excludes mid-load and error — "idle" stays submittable.
+  const canSubmit = canRequestEmbedding(embedder.status);
 
   // Threshold moves are pure filtering over already-computed similarities, so
   // dragging the slider never re-embeds anything.
@@ -79,7 +82,7 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
         <button
           type="button"
           className="button button--primary"
-          disabled={busy || !modelReady || labels.length === 0}
+          disabled={busy || !canSubmit || labels.length === 0}
           onClick={() => void embedVocabulary()}
         >
           {busy ? "Embedding…" : "Score vocabulary"}

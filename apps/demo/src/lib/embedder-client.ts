@@ -13,9 +13,20 @@ export interface DownloadProgress {
 }
 
 export type EmbedderStatus =
+  | { phase: "idle"; mode: EmbedderMode }
   | { phase: "loading"; mode: EmbedderMode; downloads: DownloadProgress[] }
   | { phase: "ready"; mode: EmbedderMode }
   | { phase: "error"; mode: EmbedderMode; message: string };
+
+/**
+ * True when an embed request can be issued right now — either immediately
+ * (loading will start lazily on the first call) or because the model already
+ * finished loading. False mid-load or on error, so callers don't pile up
+ * duplicate requests behind an in-flight or failed load.
+ */
+export function canRequestEmbedding(status: EmbedderStatus): boolean {
+  return status.phase === "idle" || status.phase === "ready";
+}
 
 type Listener = (status: EmbedderStatus) => void;
 
@@ -32,16 +43,27 @@ interface PendingRequest {
 export class EmbedderClient {
   readonly mode: EmbedderMode;
 
+  private readonly modelId: string;
+  private readonly dim: number;
   private readonly worker: Worker;
   private readonly listeners = new Set<Listener>();
   private readonly pending = new Map<number, PendingRequest>();
   private readonly downloads = new Map<string, DownloadProgress>();
   private nextRequestId = 1;
   private status: EmbedderStatus;
+  private initSent = false;
 
   constructor(modelId: string, dim: number) {
     this.mode = embedderModeFor(modelId);
-    this.status = { phase: "loading", mode: this.mode, downloads: [] };
+    this.modelId = modelId;
+    this.dim = dim;
+    // Mock mode has nothing to download, so there's no reason to defer it —
+    // deferring only matters for the real model's ~100MB network fetch, which
+    // starts lazily via `preload()`/`embedTexts()` instead of on construction.
+    this.status =
+      this.mode === "mock"
+        ? { phase: "loading", mode: this.mode, downloads: [] }
+        : { phase: "idle", mode: this.mode };
 
     this.worker = new Worker(new URL("../embed-worker.ts", import.meta.url), { type: "module" });
     this.worker.addEventListener("message", (event: MessageEvent<WorkerResponse>) => {
@@ -55,7 +77,7 @@ export class EmbedderClient {
       });
     });
 
-    this.send({ type: "init", modelId, dim });
+    if (this.mode === "mock") this.preload();
   }
 
   getStatus(): EmbedderStatus {
@@ -67,8 +89,21 @@ export class EmbedderClient {
     return () => void this.listeners.delete(listener);
   }
 
+  /**
+   * Starts the worker's model load if it hasn't started yet. Idempotent and
+   * safe to call speculatively (e.g. from a "load model now" affordance) —
+   * `embedTexts` also calls this itself, so most callers never need to.
+   */
+  preload(): void {
+    if (this.initSent) return;
+    this.initSent = true;
+    this.setStatus({ phase: "loading", mode: this.mode, downloads: [] });
+    this.send({ type: "init", modelId: this.modelId, dim: this.dim });
+  }
+
   embedTexts(texts: string[]): Promise<Vector[]> {
     if (texts.length === 0) return Promise.resolve([]);
+    this.preload();
     const requestId = this.nextRequestId++;
     return new Promise<Vector[]>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject });

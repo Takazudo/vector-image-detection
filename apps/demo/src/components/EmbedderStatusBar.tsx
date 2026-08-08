@@ -9,7 +9,13 @@ function formatMegabytes(bytes: number): string {
  * story — no download happens at all — so the bar states that plainly instead of
  * showing a progress UI that would never move.
  */
-export function EmbedderStatusBar({ status }: { status: EmbedderStatus }) {
+export function EmbedderStatusBar({
+  status,
+  onPreload,
+}: {
+  status: EmbedderStatus;
+  onPreload?: () => void;
+}) {
   if (status.phase === "error") {
     return (
       <p className="embedder-status embedder-status--error" role="status">
@@ -24,6 +30,20 @@ export function EmbedderStatusBar({ status }: { status: EmbedderStatus }) {
         <span className="embedder-status__badge">Mock mode</span>
         This index was built by <code>fake-embedder-v1</code>, so queries are embedded by the same
         deterministic stand-in — nothing is downloaded and everything runs offline.
+      </p>
+    );
+  }
+
+  if (status.phase === "idle") {
+    return (
+      <p className="embedder-status" role="status">
+        <span className="embedder-status__badge">Model not loaded</span>
+        The text tower (about 100 MB) downloads the first time you search, categorize, or score
+        vocabulary — nothing is fetched until then, or{" "}
+        <button type="button" className="embedder-status__load" onClick={onPreload}>
+          load it now
+        </button>
+        .
       </p>
     );
   }

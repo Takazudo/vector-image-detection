@@ -86,7 +86,7 @@ function Workspace({ index }: { index: DemoIndex }) {
         </nav>
       </header>
 
-      <EmbedderStatusBar status={embedder.status} />
+      <EmbedderStatusBar status={embedder.status} onPreload={embedder.preload} />
       <TagStoreBar tags={tags} />
 
       {/* In "attach" a photo click picks an exemplar rather than a neighbour query,

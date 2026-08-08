@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "fetch-samples": "node scripts/fetch-samples.mjs",
     "demo:fixture": "pnpm --filter @vector-image-detection/demo run fixture",
-    "demo:dev": "pnpm --filter @vector-image-detection/demo run dev"
+    "demo:dev": "pnpm --filter @vector-image-detection/demo run dev",
+    "vis": "node packages/cli/dist/bin.js"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
