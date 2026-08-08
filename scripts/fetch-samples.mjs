@@ -32,6 +32,7 @@ import {
   mapClassLabel,
   isLicenseAllowed,
   hasJpegExtension,
+  distributeTargets,
   petFileName,
   componentFileName,
   buildManifestItem,
@@ -142,6 +143,7 @@ async function loadExistingManifestItems() {
 
 async function fetchPets(targetTotal, existingFileSet) {
   const newItems = [];
+  let downloaded = 0; // actual network downloads, as opposed to reconciled-from-disk entries
   const perClassTarget = Math.ceil(targetTotal / 2);
   const counts = { cat: 0, dog: 0 };
   const breedCounters = new Map(); // "cat:maine_coon" -> n so far
@@ -209,6 +211,7 @@ async function fetchPets(targetTotal, existingFileSet) {
       try {
         await downloadFile(imageUrl, destPath);
         counts[catOrDog]++;
+        downloaded++;
         newItems.push(
           buildManifestItem({
             id: file,
@@ -230,7 +233,7 @@ async function fetchPets(targetTotal, existingFileSet) {
     offset += PAGE_LENGTH;
   }
 
-  return newItems;
+  return { items: newItems, downloaded };
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +263,7 @@ async function fetchComponentCategoryMembers({ gcmtitle, gcmtype, extraParams = 
 async function fetchComponentCategory({ category, knownLabel, target, existingFileSet }) {
   const newItems = [];
   let n = 0;
+  let downloaded = 0; // actual network downloads, as opposed to reconciled-from-disk entries
 
   async function processFileMembers(gcmtitle) {
     let gcmcontinue;
@@ -308,6 +312,7 @@ async function fetchComponentCategory({ category, knownLabel, target, existingFi
 
         try {
           await downloadFile(info.thumburl, destPath);
+          downloaded++;
           newItems.push(
             buildManifestItem({ id: file, file, knownLabel, source, license, author }),
           );
@@ -346,26 +351,26 @@ async function fetchComponentCategory({ category, knownLabel, target, existingFi
     }
   }
 
-  return newItems;
+  return { items: newItems, downloaded };
 }
 
 async function fetchComponents(targetTotal, existingFileSet) {
-  console.log(`\nFetching components (target ${targetTotal}, ~${Math.ceil(targetTotal / COMPONENT_CATEGORIES.length)}/category)...`);
-  const perCategoryTarget = Math.max(1, Math.ceil(targetTotal / COMPONENT_CATEGORIES.length));
+  const perCategoryTargets = distributeTargets(targetTotal, COMPONENT_CATEGORIES.length);
+  console.log(`\nFetching components (target ${targetTotal}, split ${perCategoryTargets.join("/")} across categories)...`);
   const newItems = [];
-  let totalNew = 0;
+  let downloaded = 0;
 
-  for (const { category, knownLabel } of COMPONENT_CATEGORIES) {
-    if (totalNew >= targetTotal) break;
-    const remaining = targetTotal - totalNew;
-    const target = Math.min(perCategoryTarget, remaining);
+  for (let i = 0; i < COMPONENT_CATEGORIES.length; i++) {
+    const { category, knownLabel } = COMPONENT_CATEGORIES[i];
+    const target = perCategoryTargets[i];
+    if (target <= 0) continue; // total smaller than category count — this one gets none
     console.log(`  Category: ${category} (target ${target})`);
-    const items = await fetchComponentCategory({ category, knownLabel, target, existingFileSet });
-    newItems.push(...items);
-    totalNew += items.length;
+    const result = await fetchComponentCategory({ category, knownLabel, target, existingFileSet });
+    newItems.push(...result.items);
+    downloaded += result.downloaded;
   }
 
-  return newItems;
+  return { items: newItems, downloaded };
 }
 
 // ---------------------------------------------------------------------------
@@ -416,31 +421,30 @@ async function main() {
   await mkdir(PETS_DIR, { recursive: true });
   await mkdir(COMPONENTS_DIR, { recursive: true });
 
-  const existingManifestItems = await loadExistingManifestItems();
+  // A manifest entry only counts as "already have it" if its file is still on
+  // disk — otherwise a deleted/moved image would be silently treated as present
+  // forever and never re-fetched. Drop stale entries here so both fetchers'
+  // per-item existsSync checks (and the final written manifest) reflect reality.
+  const rawExistingManifestItems = await loadExistingManifestItems();
+  const existingManifestItems = [];
+  for (const item of rawExistingManifestItems) {
+    if (existsSync(path.join(SAMPLES_DIR, item.file))) {
+      existingManifestItems.push(item);
+    } else {
+      console.warn(`Warning: dropping stale manifest entry for missing file "${item.file}".`);
+    }
+  }
   const existingFileSet = new Set(existingManifestItems.map((item) => item.file));
 
-  const existingPetCount = await countJpegs(PETS_DIR);
-  const existingComponentCount = await countJpegs(COMPONENTS_DIR);
+  // Always run the fetchers rather than short-circuiting on directory file
+  // counts: each fetcher reconciles any file already on disk (recording a
+  // manifest entry without re-downloading) as it walks its source, so a
+  // blanket "already have enough" skip here would leave files that landed
+  // outside the manifest (e.g. an interrupted prior run) unreconciled.
+  const pets = await fetchPets(args.limitPets, existingFileSet);
+  const components = await fetchComponents(args.limitComponents, existingFileSet);
 
-  let newPetItems = [];
-  if (existingPetCount >= args.limitPets) {
-    console.log(
-      `\nPets: ${existingPetCount} already on disk (>= target ${args.limitPets}), skipping fetch.`,
-    );
-  } else {
-    newPetItems = await fetchPets(args.limitPets, existingFileSet);
-  }
-
-  let newComponentItems = [];
-  if (existingComponentCount >= args.limitComponents) {
-    console.log(
-      `\nComponents: ${existingComponentCount} already on disk (>= target ${args.limitComponents}), skipping fetch.`,
-    );
-  } else {
-    newComponentItems = await fetchComponents(args.limitComponents, existingFileSet);
-  }
-
-  const allItems = [...existingManifestItems, ...newPetItems, ...newComponentItems];
+  const allItems = [...existingManifestItems, ...pets.items, ...components.items];
   await writeManifest(allItems);
   await writeCredits(allItems);
 
@@ -448,8 +452,12 @@ async function main() {
   const finalComponentCount = await countJpegs(COMPONENTS_DIR);
 
   console.log("\nDone.");
-  console.log(`  Pets:       ${finalPetCount}/${args.limitPets} (${newPetItems.length} new)`);
-  console.log(`  Components: ${finalComponentCount}/${args.limitComponents} (${newComponentItems.length} new)`);
+  console.log(
+    `  Pets:       ${finalPetCount}/${args.limitPets} (${pets.downloaded} downloaded, ${pets.items.length - pets.downloaded} reconciled from disk)`,
+  );
+  console.log(
+    `  Components: ${finalComponentCount}/${args.limitComponents} (${components.downloaded} downloaded, ${components.items.length - components.downloaded} reconciled from disk)`,
+  );
   console.log(`  Manifest:   ${path.relative(REPO_ROOT, MANIFEST_PATH)} (${allItems.length} items)`);
   console.log(`  Credits:    ${path.relative(REPO_ROOT, CREDITS_PATH)}`);
 

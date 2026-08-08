@@ -1,4 +1,9 @@
-// Run with: node --test scripts/lib/
+// Run with (from repo root): node --test
+// or explicitly:            node --test scripts/lib/*.node-test.mjs
+// A bare directory path (`node --test scripts/lib/`) does NOT work on the
+// Node versions this project targets — it errors with MODULE_NOT_FOUND
+// instead of scanning the directory — so always pass a glob or omit the path
+// and let auto-discovery run from the repo root.
 // Deliberately node:test, not vitest — these must never run inside the vitest
 // suite (see filename: *.node-test.mjs, not *.test.mjs).
 import { test } from "node:test";
@@ -12,6 +17,7 @@ import {
   mapClassLabel,
   isLicenseAllowed,
   hasJpegExtension,
+  distributeTargets,
   slugify,
   petFileName,
   componentFileName,
@@ -107,6 +113,20 @@ test("isLicenseAllowed rejects NC, ND, and unknown licenses", () => {
     undefined,
   ]) {
     assert.equal(isLicenseAllowed(license), false, `expected "${license}" to be rejected`);
+  }
+});
+
+test("distributeTargets gives every bucket coverage instead of exhausting the total early", () => {
+  assert.deepEqual(distributeTargets(6, 4), [2, 2, 1, 1]);
+  assert.deepEqual(distributeTargets(40, 4), [10, 10, 10, 10]);
+  assert.deepEqual(distributeTargets(9, 4), [3, 2, 2, 2]);
+});
+
+test("distributeTargets sums exactly to the requested total", () => {
+  for (const [total, count] of [[6, 4], [40, 4], [7, 3], [1, 4], [0, 4]]) {
+    const parts = distributeTargets(total, count);
+    assert.equal(parts.reduce((a, b) => a + b, 0), total);
+    assert.equal(parts.length, count);
   }
 });
 

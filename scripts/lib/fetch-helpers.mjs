@@ -167,6 +167,21 @@ export function buildManifestItem({ id, file, knownLabel, breed, source, license
 }
 
 /**
+ * Split `total` as evenly as possible across `count` buckets, favoring giving
+ * every bucket at least one unit (the remainder is handed out one-per-bucket,
+ * starting from the first) over a naive per-bucket ceiling — a ceiling-based
+ * split can let earlier buckets exhaust the whole total before later ones are
+ * ever touched (e.g. total=6 across 4 categories at ceil(6/4)=2 each would
+ * fill 3 categories and leave the 4th with nothing).
+ */
+export function distributeTargets(total, count) {
+  if (!Number.isFinite(total) || !Number.isFinite(count) || count <= 0) return [];
+  const base = Math.floor(total / count);
+  const remainder = total % count;
+  return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
+}
+
+/**
  * True if a Wikimedia Commons file title (e.g. "File:Foo.jpg") has a JPEG
  * extension. Commons category listings mix in PNG/GIF/SVG/PDF/DjVu files
  * whose `thumburl` doesn't necessarily come back as an actual JPEG — since
