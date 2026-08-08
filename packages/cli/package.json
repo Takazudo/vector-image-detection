@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "vis": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,5 +23,11 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
+  },
+  "dependencies": {
+    "@vector-image-detection/core": "workspace:*",
+    "@vector-image-detection/vlm-tagger": "workspace:*",
+    "commander": "^15.0.0",
+    "sharp": "^0.35.3"
   }
 }
