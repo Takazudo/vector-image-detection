@@ -60,4 +60,23 @@ describe.skipIf(!QDRANT_URL)("QdrantVectorStore (integration, requires QDRANT_UR
     await store.delete(["dog-1.jpg"]);
     expect(await store.count()).toBe(2);
   });
+
+  it("gets items by id with vectors, in request order, skipping missing ids and the internal point-id payload key", async () => {
+    const store = new QdrantVectorStore({
+      url: QDRANT_URL as string,
+      collection: COLLECTION,
+      dim: DIM,
+    });
+    await store.upsert([
+      { id: "cat-3.jpg", vector: vec(1, 0, 0, 0), payload: { tags: ["cat"] } },
+      { id: "cat-4.jpg", vector: vec(0, 0, 1, 0), payload: { tags: [] } },
+    ]);
+
+    const found = await store.get(["cat-4.jpg", "missing.jpg", "cat-3.jpg"]);
+    expect(found.map((i) => i.id)).toEqual(["cat-4.jpg", "cat-3.jpg"]);
+    expect(Array.from(found[0]!.vector)).toEqual([0, 0, 1, 0]);
+    expect(found[1]!.payload).toEqual({ tags: ["cat"] });
+
+    expect(await store.get([])).toEqual([]);
+  });
 });

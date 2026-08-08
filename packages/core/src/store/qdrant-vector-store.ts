@@ -102,6 +102,37 @@ export class QdrantVectorStore implements VectorStore {
     return filtered.slice(0, k);
   }
 
+  async get(ids: string[]): Promise<VectorStoreItem[]> {
+    if (ids.length === 0) return [];
+    await this.ensureCollection();
+    const points = await this.client.retrieve(this.collection, {
+      ids: ids.map(toQdrantPointId),
+      with_payload: true,
+      with_vector: true,
+    });
+
+    const items: VectorStoreItem[] = [];
+    for (const point of points) {
+      // Only the plain unnamed-vector shape is handled (matches the single
+      // unnamed vector config `ensureCollection` creates) — mirrors the
+      // unnamed-vector assumption already made by upsert()/search() above.
+      if (!Array.isArray(point.vector)) continue;
+      const payload = point.payload as Record<string, unknown> | undefined;
+      const sourceId = payload?.[QDRANT_SOURCE_ID_PAYLOAD_KEY];
+      const { [QDRANT_SOURCE_ID_PAYLOAD_KEY]: _sourceId, ...restPayload } = payload ?? {};
+      items.push({
+        id: typeof sourceId === "string" ? sourceId : String(point.id),
+        vector: Float32Array.from(point.vector as number[]),
+        payload: restPayload,
+      });
+    }
+
+    // Preserve the caller's requested order (retrieve()'s response order is
+    // not documented as matching request order).
+    const byId = new Map(items.map((item) => [item.id, item]));
+    return ids.map((id) => byId.get(id)).filter((item): item is VectorStoreItem => item != null);
+  }
+
   async delete(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     await this.ensureCollection();
