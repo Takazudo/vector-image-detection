@@ -16,9 +16,12 @@ export function EmbedderStatusBar({
   status: EmbedderStatus;
   onPreload?: () => void;
 }) {
+  const statusClass = "mt-md mb-0 text-sm leading-normal text-muted";
+  const badgeClass =
+    "me-xs inline-block rounded-pill border border-line-strong px-xs py-3xs text-xs font-semibold text-ink";
   if (status.phase === "error") {
     return (
-      <p className="embedder-status embedder-status--error" role="status">
+      <p className={`${statusClass} text-danger`} role="status">
         <strong>Text embedding unavailable.</strong> {status.message}
       </p>
     );
@@ -26,8 +29,8 @@ export function EmbedderStatusBar({
 
   if (status.mode === "mock") {
     return (
-      <p className="embedder-status" role="status">
-        <span className="embedder-status__badge">Mock mode</span>
+      <p className={statusClass} role="status">
+        <span className={badgeClass}>Mock mode</span>
         This index was built by <code>fake-embedder-v1</code>, so queries are embedded by the same
         deterministic stand-in — nothing is downloaded and everything runs offline.
       </p>
@@ -36,11 +39,15 @@ export function EmbedderStatusBar({
 
   if (status.phase === "idle") {
     return (
-      <p className="embedder-status" role="status">
-        <span className="embedder-status__badge">Model not loaded</span>
+      <p className={statusClass} role="status">
+        <span className={badgeClass}>Model not loaded</span>
         The text tower (about 100 MB) downloads the first time you search, categorize, or score
         vocabulary — nothing is fetched until then, or{" "}
-        <button type="button" className="embedder-status__load" onClick={onPreload}>
+        <button
+          type="button"
+          className="underline-offset-ui min-h-control cursor-pointer border-0 bg-transparent p-0 text-sm text-accent underline hover-safe:text-accent-hover active:text-accent-hover"
+          onClick={onPreload}
+        >
           load it now
         </button>
         .
@@ -53,8 +60,8 @@ export function EmbedderStatusBar({
     const expected = status.downloads.reduce((total, file) => total + file.total, 0);
 
     return (
-      <p className="embedder-status" role="status">
-        <span className="embedder-status__badge">Loading model</span>
+      <p className={statusClass} role="status">
+        <span className={badgeClass}>Loading model</span>
         Fetching the text tower (about 100 MB on a first visit; the browser caches it afterwards)
         {expected > 0 && ` — ${formatMegabytes(loaded)} of ${formatMegabytes(expected)}`}.
       </p>
@@ -62,8 +69,8 @@ export function EmbedderStatusBar({
   }
 
   return (
-    <p className="embedder-status" role="status">
-      <span className="embedder-status__badge">Model ready</span>
+    <p className={statusClass} role="status">
+      <span className={badgeClass}>Model ready</span>
       Queries are embedded in a Web Worker by the real text tower.
     </p>
   );

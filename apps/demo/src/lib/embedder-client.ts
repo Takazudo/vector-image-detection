@@ -1,4 +1,4 @@
-import type { Vector } from "@vector-image-detection/core/browser";
+import type { Vector } from "../generated/core-browser.mjs";
 import {
   embedderModeFor,
   type EmbedderMode,

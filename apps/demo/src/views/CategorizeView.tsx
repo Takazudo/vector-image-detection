@@ -1,8 +1,23 @@
-import type { IndexItem } from "@vector-image-detection/core/browser";
-import { clustering, labeling } from "@vector-image-detection/core/browser";
+import type { IndexItem } from "../generated/core-browser.mjs";
+import { clustering, labeling } from "../generated/core-browser.mjs";
 import { useMemo, useState } from "react";
 import { PhotoCard } from "../components/PhotoCard";
 import { VocabularyField } from "../components/VocabularyField";
+import {
+  buttonClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldRangeClass,
+  growFieldClass,
+  photoGridClass,
+  toolbarClass,
+  viewClass,
+  viewErrorClass,
+  viewHeaderClass,
+  viewLedeClass,
+  viewNoteClass,
+  viewTitleClass,
+} from "../components/ui";
 import { canRequestEmbedding } from "../lib/embedder-client";
 import { embedVocabInWorker } from "../lib/vocab-embedding";
 import { DEFAULT_CATEGORY_VOCABULARY, parseVocabulary } from "../lib/vocabulary";
@@ -52,16 +67,16 @@ export function CategorizeView({ ctx }: { ctx: DemoContext }) {
   }
 
   return (
-    <section className="view">
-      <header className="view__header">
-        <h2 className="view__title">Auto-categorize</h2>
-        <p className="view__lede">
+    <section className={viewClass}>
+      <header className={viewHeaderClass}>
+        <h2 className={viewTitleClass}>Auto-categorize</h2>
+        <p className={viewLedeClass}>
           Give the categories you care about as words. Each photo is assigned to the single closest
           one — no training, no labelled examples.
         </p>
       </header>
 
-      <div className="toolbar">
+      <div className={toolbarClass}>
         <VocabularyField
           id="categorize-vocab"
           label="Categories"
@@ -71,7 +86,7 @@ export function CategorizeView({ ctx }: { ctx: DemoContext }) {
         />
         <button
           type="button"
-          className="button button--primary"
+          className={buttonClass("primary")}
           disabled={busy || !canSubmit || labels.length === 0}
           onClick={() => void classify()}
         >
@@ -79,18 +94,20 @@ export function CategorizeView({ ctx }: { ctx: DemoContext }) {
         </button>
       </div>
 
-      {error && <p className="view__error">Could not categorize: {error}</p>}
+      {error && <p className={viewErrorClass}>Could not categorize: {error}</p>}
 
       {groups?.map((group) => (
-        <div key={group.label} className="group">
-          <h3 className="group__title">
+        <div key={group.label} className="flex flex-col gap-xs">
+          <h3 className="m-0 flex items-baseline gap-xs text-body font-semibold">
             {group.label}
-            <span className="group__count">{group.entries.length}</span>
+            <span className="text-xs font-medium text-muted tabular-nums">
+              {group.entries.length}
+            </span>
           </h3>
           {group.entries.length === 0 ? (
-            <p className="view__empty">No photo is closest to this word.</p>
+            <p className={viewNoteClass}>No photo is closest to this word.</p>
           ) : (
-            <div className="photo-grid">
+            <div className={photoGridClass()}>
               {group.entries.map(({ item, score }) => (
                 <PhotoCard
                   key={item.id}
@@ -146,12 +163,14 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
 
   return (
     <details
-      className="disclosure"
+      className="mt-md flex flex-col gap-md rounded-md border border-line bg-surface p-md"
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="disclosure__summary">Discover groups (exploratory)</summary>
-      <p className="view__lede">
+      <summary className="min-h-control cursor-pointer text-body font-semibold">
+        Discover groups (exploratory)
+      </summary>
+      <p className={viewLedeClass}>
         k-means over the photo vectors, with no words involved. This is unsupervised — a cluster
         means &ldquo;these vectors are relatively close to each other&rdquo;, not &ldquo;these are
         the same kind of thing&rdquo;. With real photos, clusters often track colour, pose, or
@@ -159,19 +178,19 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
       </p>
 
       {!canCluster ? (
-        <p className="view__empty">
+        <p className={viewNoteClass}>
           This index holds {index.items.length} {index.items.length === 1 ? "photo" : "photos"} —
           too few to split into groups. Clustering needs at least three.
         </p>
       ) : (
-        <div className="toolbar">
-          <div className="field field--grow">
-            <label className="field__label" htmlFor="cluster-k">
+        <div className={toolbarClass}>
+          <div className={growFieldClass}>
+            <label className={fieldLabelClass} htmlFor="cluster-k">
               Number of groups (k): {Math.min(k, maxK)}
             </label>
             <input
               id="cluster-k"
-              className="field__range"
+              className={fieldRangeClass}
               type="range"
               min={MIN_K}
               max={maxK}
@@ -180,14 +199,14 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
               onChange={(event) => setK(Number(event.target.value))}
             />
             {suggested !== null && (
-              <p className="field__hint">
+              <p className={fieldHintClass}>
                 Highest silhouette score in this range is k={suggested} — a heuristic for how many
                 groups the data supports, not how many real categories exist.
               </p>
             )}
           </div>
           {suggested !== null && (
-            <button type="button" className="button button--quiet" onClick={() => setK(suggested)}>
+            <button type="button" className={buttonClass("quiet")} onClick={() => setK(suggested)}>
               Use k={suggested}
             </button>
           )}
@@ -195,12 +214,12 @@ function DiscoverGroups({ ctx }: { ctx: DemoContext }) {
       )}
 
       {clusters?.map(([cluster, items]) => (
-        <div key={cluster} className="group">
-          <h3 className="group__title">
+        <div key={cluster} className="flex flex-col gap-xs">
+          <h3 className="m-0 flex items-baseline gap-xs text-body font-semibold">
             Group {cluster + 1}
-            <span className="group__count">{items.length}</span>
+            <span className="text-xs font-medium text-muted tabular-nums">{items.length}</span>
           </h3>
-          <div className="photo-grid photo-grid--compact">
+          <div className={photoGridClass(true)}>
             {items.map((item) => (
               <PhotoCard
                 key={item.id}

@@ -1,4 +1,4 @@
-import type { IndexMeta } from "@vector-image-detection/core/browser";
+import type { IndexMeta } from "../generated/core-browser.mjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addTag as addTagToOverlay,

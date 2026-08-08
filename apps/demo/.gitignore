@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 dist
+.zfb-build/
+**/zfb-tailwind-entry-*.css
+public/onnxruntime/
+src/generated/
 dist-ssr
 *.local
 

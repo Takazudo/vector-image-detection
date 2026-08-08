@@ -1,4 +1,5 @@
 import type { TagOverlayHandle } from "../hooks/use-tag-overlay";
+import { buttonClass } from "./ui";
 
 function downloadJson(contents: string, filename: string): void {
   const url = URL.createObjectURL(new Blob([contents], { type: "application/json" }));
@@ -20,18 +21,18 @@ export function TagStoreBar({ tags }: { tags: TagOverlayHandle }) {
   const { confirmedCount } = tags;
 
   return (
-    <div className="tag-store">
-      <p className="tag-store__note">
+    <div className="mt-xs flex flex-wrap items-center justify-between gap-sm rounded-md border border-line bg-surface px-md py-sm">
+      <p className="m-0 min-w-0 basis-store grow text-sm text-muted">
         <strong>
           {confirmedCount} confirmed {confirmedCount === 1 ? "tag" : "tags"}
         </strong>{" "}
         kept in this browser&rsquo;s <code>localStorage</code>, keyed to this index. Demo-scoped
         only — a real deployment writes confirmed tags back into the index bundle or a database.
       </p>
-      <div className="tag-store__actions">
+      <div className="flex gap-xs">
         <button
           type="button"
-          className="button button--quiet"
+          className={buttonClass("quiet")}
           disabled={confirmedCount === 0}
           onClick={() => downloadJson(tags.exportJson(), "vis-demo-tags.json")}
         >
@@ -39,7 +40,7 @@ export function TagStoreBar({ tags }: { tags: TagOverlayHandle }) {
         </button>
         <button
           type="button"
-          className="button button--quiet"
+          className={buttonClass("quiet")}
           disabled={confirmedCount === 0}
           onClick={() => tags.reset()}
         >

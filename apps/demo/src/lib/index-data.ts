@@ -1,12 +1,12 @@
-import type { IndexItem, IndexMeta, Vector } from "@vector-image-detection/core/browser";
+import type { IndexItem, IndexMeta, Vector } from "../generated/core-browser.mjs";
 import {
   InMemoryVectorStore,
   loadIndexFromUrl,
   storeFromIndex,
-} from "@vector-image-detection/core/browser";
+} from "../generated/core-browser.mjs";
 
 /** Where `vis export-demo` (and `pnpm demo:fixture`) write the bundle, relative to the deployed base path. */
-export const DATA_BASE_URL = `${import.meta.env.BASE_URL}data`;
+export const DATA_BASE_URL = "/data";
 
 export interface DemoIndex {
   meta: IndexMeta;

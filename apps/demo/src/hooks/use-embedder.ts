@@ -1,4 +1,4 @@
-import type { IndexMeta } from "@vector-image-detection/core/browser";
+import type { IndexMeta } from "../generated/core-browser.mjs";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { EmbedderClient, type EmbedderStatus } from "../lib/embedder-client";
 import { embedderModeFor } from "../lib/embedder-protocol";
