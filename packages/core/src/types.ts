@@ -42,7 +42,17 @@ export interface IndexItem {
   file: string;
   thumb?: string;
   knownLabel?: string; // ground-truth label from sample manifest (e.g. 'cat', 'dog', 'capacitor')
-  tags: string[]; // CONFIRMED tags only — proposals are never persisted
+  /**
+   * CONFIRMED tags only (FROZEN semantics). Proposals — e.g. model
+   * suggestions or in-progress edits a user hasn't accepted yet — are
+   * ephemeral and must never be written here or persisted anywhere in the
+   * index bundle; only `updateTags` (see store/node-index-bundle.ts) may
+   * rewrite this field, and it always replaces the full array for an id.
+   * The index bundle (meta.json + embeddings.bin) is the source of truth for
+   * tags; any Qdrant collection is a derived cache and re-syncing overwrites
+   * it from here, never the reverse.
+   */
+  tags: string[];
   source?: string;
   license?: string;
   author?: string; // attribution passthrough
