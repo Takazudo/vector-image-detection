@@ -14,7 +14,12 @@ export function registerTagVocabCommand(tagCmd: Command, deps: CliDeps): void {
   tagCmd
     .command("vocab <words...>")
     .description("Zero-shot vocabulary tagging over every image in the index")
-    .option("--threshold <n>", "similarity threshold", "0.2")
+    .option(
+      "--threshold <n>",
+      "similarity threshold — raw SigLIP text-image cosine similarities are small " +
+        "(typically 0.03-0.08 for a match), so useful thresholds live in that band",
+      "0.04",
+    )
     .option("--index <name>", "index name", DEFAULT_INDEX_NAME)
     .option("--apply", "persist proposals >= threshold as confirmed tags (merged, atomic)")
     .action(async (words: string[], opts: TagVocabOptions) => {

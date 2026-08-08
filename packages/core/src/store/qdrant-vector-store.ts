@@ -76,7 +76,12 @@ export class QdrantVectorStore implements VectorStore {
           vectors: { size: this.dim, distance: "Cosine" },
         });
       }
-    })();
+    })().catch((error: unknown) => {
+      // A transient server failure must not be cached forever — clear the
+      // memoized promise so the next operation retries from scratch.
+      this.ensured = undefined;
+      throw error;
+    });
     return this.ensured;
   }
 
@@ -114,8 +119,16 @@ export class QdrantVectorStore implements VectorStore {
     });
 
     const hits: SearchHit[] = response.points.map((point) => {
-      const payload = point.payload as Record<string, unknown> | undefined;
-      const sourceId = payload?.[QDRANT_SOURCE_ID_PAYLOAD_KEY];
+      const raw = point.payload as Record<string, unknown> | undefined;
+      // Strip the adapter-internal id key so filters and returned hits see the
+      // same payload shape as `get()` and the in-memory backend.
+      let sourceId: unknown;
+      let payload: Record<string, unknown> | undefined;
+      if (raw) {
+        const { [QDRANT_SOURCE_ID_PAYLOAD_KEY]: idValue, ...rest } = raw;
+        sourceId = idValue;
+        payload = rest;
+      }
       return {
         id: typeof sourceId === "string" ? sourceId : String(point.id),
         score: point.score,

@@ -129,4 +129,59 @@ describe("QdrantVectorStore.upsert batching (unit, no server)", () => {
 
     expect(upsertCalls).toEqual([256, 256, 88]);
   });
+
+  it("strips the adapter-internal __vecStoreId key from search payloads and filter input", async () => {
+    const store = new QdrantVectorStore({
+      url: "http://localhost:9",
+      collection: "payload-test",
+      dim: 4,
+    });
+    const fakeClient = {
+      collectionExists: async () => ({ exists: true }),
+      query: async () => ({
+        points: [
+          {
+            id: "0000-fake",
+            score: 0.9,
+            payload: { file: "a.jpg", __vecStoreId: "a.jpg" },
+          },
+        ],
+      }),
+    };
+    Reflect.set(store, "client", fakeClient);
+
+    const filterSeen: Array<Record<string, unknown> | undefined> = [];
+    const hits = await store.search(new Float32Array([1, 0, 0, 0]), 5, (payload) => {
+      filterSeen.push(payload);
+      return true;
+    });
+
+    expect(hits).toEqual([{ id: "a.jpg", score: 0.9, payload: { file: "a.jpg" } }]);
+    expect(filterSeen).toEqual([{ file: "a.jpg" }]);
+  });
+
+  it("retries ensureCollection after a transient failure instead of caching the rejection", async () => {
+    const store = new QdrantVectorStore({
+      url: "http://localhost:9",
+      collection: "retry-test",
+      dim: 4,
+    });
+    let calls = 0;
+    const fakeClient = {
+      collectionExists: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("transient network failure");
+        return { exists: true };
+      },
+      query: async () => ({ points: [] }),
+    };
+    Reflect.set(store, "client", fakeClient);
+
+    await expect(store.search(new Float32Array([1, 0, 0, 0]), 1)).rejects.toThrow(
+      "transient network failure",
+    );
+    // Second call must retry (and now succeed), not rethrow the cached error.
+    await expect(store.search(new Float32Array([1, 0, 0, 0]), 1)).resolves.toEqual([]);
+    expect(calls).toBe(2);
+  });
 });
