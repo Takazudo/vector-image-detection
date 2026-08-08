@@ -20,5 +20,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "sharp": "^0.35.3"
   }
 }
