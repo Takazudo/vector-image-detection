@@ -1,4 +1,4 @@
-import type { VectorStore } from "../types.js";
+import type { SearchHit, VectorStore } from "../types.js";
 import { normalizeVector } from "./vector-math.js";
 
 export interface TagProposal {
@@ -55,25 +55,48 @@ export async function proposeTagPropagation(
   const alreadyTagged = (payload: Record<string, unknown> | undefined): boolean =>
     Array.isArray(payload?.tags) && (payload.tags as unknown[]).includes(tag);
 
-  // Over-fetch by exemplarIds.length: at most that many of the top hits can
-  // be exemplars (post-filtered below), so this window is guaranteed to
-  // leave >= `limit` non-exemplar candidates whenever that many exist.
   const exemplarIdSet = new Set(exemplarIds);
-  const hits = await store.search(
-    meanVector,
-    limit + exemplarIds.length,
-    (payload) => !alreadyTagged(payload),
-  );
+  const collectProposals = (hits: SearchHit[]): TagProposal[] => {
+    const proposals: TagProposal[] = [];
+    for (const hit of hits) {
+      if (exemplarIdSet.has(hit.id)) continue;
+      // `search` returns hits sorted by score descending (both VectorStore
+      // implementations guarantee this), so the first below-threshold hit
+      // means everything after it is too.
+      if (hit.score < threshold) break;
+      proposals.push({ id: hit.id, score: hit.score });
+      if (proposals.length >= limit) break;
+    }
+    return proposals;
+  };
 
-  const proposals: TagProposal[] = [];
-  for (const hit of hits) {
-    if (exemplarIdSet.has(hit.id)) continue;
-    // `search` returns hits sorted by score descending (both VectorStore
-    // implementations guarantee this), so the first below-threshold hit
-    // means everything after it is too.
-    if (hit.score < threshold) break;
-    proposals.push({ id: hit.id, score: hit.score });
-    if (proposals.length >= limit) break;
+  // Over-fetch by exemplarIds.length: at most that many of the top hits can
+  // be exemplars, so this window alone is enough for an exact VectorStore
+  // (e.g. InMemoryVectorStore). QdrantVectorStore, though, applies this
+  // filter client-side after its own internal over-fetch cap (see
+  // `search()` in qdrant-vector-store.ts) — a very selective filter (many
+  // already-tagged neighbors ranked above the real candidates) can then
+  // yield fewer results than actually exist above `threshold`. Widen the
+  // request a bounded number of times when that happens, to reduce (it
+  // cannot fully eliminate, short of an unbounded scan) that risk.
+  //
+  // `hits.length` alone can't tell us whether the store is genuinely
+  // exhausted or just truncated `k` raw candidates down to fewer post-filter
+  // hits (this scenario is indistinguishable from the outside — that's the
+  // bug being worked around) — `count()` is the only honest exhaustion
+  // signal available through the `VectorStore` interface.
+  const total = await store.count();
+  let k = Math.min(limit + exemplarIds.length, total);
+  let hits = await store.search(meanVector, k, (payload) => !alreadyTagged(payload));
+  let proposals = collectProposals(hits);
+
+  const MAX_WIDEN_ATTEMPTS = 3;
+  const WIDEN_FACTOR = 4;
+  for (let attempt = 0; proposals.length < limit && k < total && attempt < MAX_WIDEN_ATTEMPTS; attempt++) {
+    k = Math.min(k * WIDEN_FACTOR, total);
+    hits = await store.search(meanVector, k, (payload) => !alreadyTagged(payload));
+    proposals = collectProposals(hits);
   }
+
   return proposals;
 }
