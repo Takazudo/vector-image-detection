@@ -80,7 +80,11 @@ async function buildStore(taggedCatIds: string[] = []): Promise<InMemoryVectorSt
       vector: catVectors[i] as Vector,
       payload: { tags: taggedCatIds.includes(id) ? ["cat"] : [] },
     })),
-    ...DOG_IDS.map((id, i) => ({ id, vector: dogVectors[i] as Vector, payload: { tags: [] as string[] } })),
+    ...DOG_IDS.map((id, i) => ({
+      id,
+      vector: dogVectors[i] as Vector,
+      payload: { tags: [] as string[] },
+    })),
   ];
   return new InMemoryVectorStore(items);
 }
@@ -132,7 +136,9 @@ describe("proposeTagPropagation", () => {
 
   it("throws when an exemplar id is not found in the store", async () => {
     const store = await buildStore(["cat-1"]);
-    await expect(proposeTagPropagation(store, ["cat-1", "missing-id"], "cat")).rejects.toThrow(/missing-id/);
+    await expect(proposeTagPropagation(store, ["cat-1", "missing-id"], "cat")).rejects.toThrow(
+      /missing-id/,
+    );
   });
 
   it("throws when exemplarIds is empty", async () => {
@@ -162,14 +168,25 @@ describe("proposeTagPropagation", () => {
       vector: vec(0.99, Math.sqrt(1 - 0.99 * 0.99)),
       payload: { tags: [] as string[] },
     }));
-    const exemplar: VectorStoreItem = { id: "exemplar-1", vector: vec(1, 0), payload: { tags: ["x"] } };
+    const exemplar: VectorStoreItem = {
+      id: "exemplar-1",
+      vector: vec(1, 0),
+      payload: { tags: ["x"] },
+    };
     const store = new TruncateThenFilterStore([exemplar, ...distractors, ...candidates]);
 
     // A single search(meanVector, limit + exemplarIds.length=4) against this
     // store would return zero hits — its raw top-4 window is entirely
     // already-tagged distractors, filtered down to nothing.
-    const proposals = await proposeTagPropagation(store, ["exemplar-1"], "x", { limit: 3, threshold: 0.9 });
+    const proposals = await proposeTagPropagation(store, ["exemplar-1"], "x", {
+      limit: 3,
+      threshold: 0.9,
+    });
 
-    expect(proposals.map((p) => p.id).sort()).toEqual(["candidate-0", "candidate-1", "candidate-2"]);
+    expect(proposals.map((p) => p.id).sort()).toEqual([
+      "candidate-0",
+      "candidate-1",
+      "candidate-2",
+    ]);
   });
 });

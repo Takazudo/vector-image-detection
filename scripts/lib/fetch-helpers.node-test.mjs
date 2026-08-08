@@ -123,9 +123,18 @@ test("distributeTargets gives every bucket coverage instead of exhausting the to
 });
 
 test("distributeTargets sums exactly to the requested total", () => {
-  for (const [total, count] of [[6, 4], [40, 4], [7, 3], [1, 4], [0, 4]]) {
+  for (const [total, count] of [
+    [6, 4],
+    [40, 4],
+    [7, 3],
+    [1, 4],
+    [0, 4],
+  ]) {
     const parts = distributeTargets(total, count);
-    assert.equal(parts.reduce((a, b) => a + b, 0), total);
+    assert.equal(
+      parts.reduce((a, b) => a + b, 0),
+      total,
+    );
     assert.equal(parts.length, count);
   }
 });
@@ -150,10 +159,7 @@ test("petFileName and componentFileName build the documented relative paths", ()
     petFileName({ catOrDog: "cat", breed: "maine_coon", index: 3 }),
     "pets/cat-maine-coon-3.jpg",
   );
-  assert.equal(
-    componentFileName({ label: "capacitor", index: 7 }),
-    "components/capacitor-7.jpg",
-  );
+  assert.equal(componentFileName({ label: "capacitor", index: 7 }), "components/capacitor-7.jpg");
 });
 
 test("buildManifestItem includes optional fields only when present", () => {
@@ -196,9 +202,6 @@ test("buildManifestItem includes optional fields only when present", () => {
 
 test("stripHtml removes markup and collapses whitespace", () => {
   assert.equal(stripHtml('<div class="fn value">\nMartin Brown</div>'), "Martin Brown");
-  assert.equal(
-    stripHtml('<a href="//commons.wikimedia.org/wiki/User:Foo">Foo</a>'),
-    "Foo",
-  );
+  assert.equal(stripHtml('<a href="//commons.wikimedia.org/wiki/User:Foo">Foo</a>'), "Foo");
   assert.equal(stripHtml(undefined), "");
 });

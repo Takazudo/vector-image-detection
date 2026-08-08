@@ -14,7 +14,15 @@ describe("@vector-image-detection/cli package exports", () => {
     expect(program.name()).toBe("vis");
     const names = program.commands.map((cmd) => cmd.name());
     expect(names).toEqual(
-      expect.arrayContaining(["ingest", "search", "similar", "tag", "cluster", "qdrant", "export-demo"]),
+      expect.arrayContaining([
+        "ingest",
+        "search",
+        "similar",
+        "tag",
+        "cluster",
+        "qdrant",
+        "export-demo",
+      ]),
     );
   });
 });

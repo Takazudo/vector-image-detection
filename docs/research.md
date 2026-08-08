@@ -6,7 +6,7 @@ This document is the research deliverable behind this PoC. It answers one questi
 
 A customer has a large number of rough, informally-shot photos of items — for example, electrical components — sitting in cloud storage. The photos have no filenames, tags, or other text attached to them. The goal is to be able to find a specific photo by describing what's in it ("the photo of that capacitor") without first manually organizing, renaming, or labeling the entire collection.
 
-This is fundamentally a search problem, not a filing problem: the photos don't need folders or a taxonomy imposed on them ahead of time. They need to become *queryable by meaning*.
+This is fundamentally a search problem, not a filing problem: the photos don't need folders or a taxonomy imposed on them ahead of time. They need to become _queryable by meaning_.
 
 ## 2. Reference architecture and its local mapping
 
@@ -18,12 +18,12 @@ Stripped of its video-specific details, the transferable core of that architectu
 
 This PoC reproduces that same pipeline for still photos, but swaps every paid/cloud component for a free/local equivalent so the whole thing can be run and iterated on without a cloud budget or API keys:
 
-| Reference (production) | This PoC (local) |
-|---|---|
-| Vertex AI `multimodalembedding` API | transformers.js SigLIP model (local, ONNX, free) |
-| Qdrant (Docker) | `VectorStore` interface — in-memory implementation by default, Qdrant adapter available |
-| Google Cloud Storage (photo source) | Local folder |
-| Cosine distance search in Qdrant | Same cosine similarity semantics, computed in-process or via the Qdrant adapter |
+| Reference (production)              | This PoC (local)                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------- |
+| Vertex AI `multimodalembedding` API | transformers.js SigLIP model (local, ONNX, free)                                        |
+| Qdrant (Docker)                     | `VectorStore` interface — in-memory implementation by default, Qdrant adapter available |
+| Google Cloud Storage (photo source) | Local folder                                                                            |
+| Cosine distance search in Qdrant    | Same cosine similarity semantics, computed in-process or via the Qdrant adapter         |
 
 Because the PoC is built against a `VectorStore` interface rather than a concrete database, and because the embedding step is model-agnostic beyond dimension/model bookkeeping, the same architecture can move from local/free back to the original Vertex AI + Qdrant production shape (or a similar cloud stack) by swapping implementations rather than redesigning the pipeline. Section 8 details that migration path.
 
@@ -31,16 +31,16 @@ Because the PoC is built against a `VectorStore` interface rather than a concret
 
 The embedding model is the one component where "swap it later" has a real cost — see the note on re-indexing below — so it was chosen carefully, with license compatibility as a hard constraint alongside size and quality.
 
-| Model | Dim | q8 size | License | Verdict |
-|---|---|---|---|---|
-| `Xenova/siglip-base-patch16-224` | 768 | ~201MB | Apache-2.0 | **default** |
-| `Xenova/clip-vit-base-patch32` | 512 | ~147MB | no license tag on Hugging Face (openai/clip repo) | swappable, A/B comparison only |
-| `Xenova/mobileclip_s0` | 512 | ~52MB | apple-amlr | smallest footprint, license needs caution |
-| jina-clip-v2 | 1024 | – | CC-BY-NC-4.0 | rejected — non-commercial license |
+| Model                            | Dim  | q8 size | License                                           | Verdict                                   |
+| -------------------------------- | ---- | ------- | ------------------------------------------------- | ----------------------------------------- |
+| `Xenova/siglip-base-patch16-224` | 768  | ~201MB  | Apache-2.0                                        | **default**                               |
+| `Xenova/clip-vit-base-patch32`   | 512  | ~147MB  | no license tag on Hugging Face (openai/clip repo) | swappable, A/B comparison only            |
+| `Xenova/mobileclip_s0`           | 512  | ~52MB   | apple-amlr                                        | smallest footprint, license needs caution |
+| jina-clip-v2                     | 1024 | –       | CC-BY-NC-4.0                                      | rejected — non-commercial license         |
 
 `Xenova/siglip-base-patch16-224` is the default: a clean Apache-2.0 license, a reasonable 768-dimension embedding, and a manageable ~201MB quantized (q8) footprint. `clip-vit-base-patch32` and `mobileclip_s0` are kept available for A/B comparisons but are not the default — CLIP's Hugging Face mirror carries no explicit license tag, and MobileCLIP ships under Apple's AMLR license, which warrants caution before commercial use. jina-clip-v2 was evaluated and rejected outright: CC-BY-NC-4.0 forbids commercial use, conflicting with this PoC's eventual production intent.
 
-All model handling goes through [transformers.js](https://huggingface.co/docs/transformers.js) v4 (package `@huggingface/transformers`, v4 shipped February 2026). The legacy package name, `@xenova/transformers`, is frozen at v2.17.2 and is not the one this project depends on. transformers.js v4 exposes SigLIP's two-tower architecture as separate `SiglipVisionModel` and `SiglipTextModel` classes, which matters for the browser demo: a browser client that only needs to embed a *text* query can download just the text tower rather than the full vision+text model. transformers.js v4 also ships a `zero-shot-image-classification` pipeline, which is the mechanism used for vocabulary-based tagging (Section 4).
+All model handling goes through [transformers.js](https://huggingface.co/docs/transformers.js) v4 (package `@huggingface/transformers`, v4 shipped February 2026). The legacy package name, `@xenova/transformers`, is frozen at v2.17.2 and is not the one this project depends on. transformers.js v4 exposes SigLIP's two-tower architecture as separate `SiglipVisionModel` and `SiglipTextModel` classes, which matters for the browser demo: a browser client that only needs to embed a _text_ query can download just the text tower rather than the full vision+text model. transformers.js v4 also ships a `zero-shot-image-classification` pipeline, which is the mechanism used for vocabulary-based tagging (Section 4).
 
 One consequence of the model choice shapes the index format directly: the vector index stores both `modelId` and `dim` alongside every embedding, because **embeddings from different models are not comparable to each other**. Swapping the embedding model is not a drop-in change — it requires re-indexing the entire photo collection from scratch.
 
@@ -59,13 +59,13 @@ This mechanism alone — no tags, no captions, nothing attached to the photos �
 
 ### 4.2 Word amplification ("self-attaching word" feature)
 
-The second mechanism is about producing labels *for* photos, using words the customer already cares about, without a human tagging every photo by hand. It has two parts:
+The second mechanism is about producing labels _for_ photos, using words the customer already cares about, without a human tagging every photo by hand. It has two parts:
 
-1. **Zero-shot tagging against a customer-supplied vocabulary.** Given a fixed list of candidate labels (e.g. "capacitor", "resistor", "connector"), each photo is scored against a template like `"a photo of a {label}"` for every label, and the highest-scoring label(s) are proposed as tags. It's important to be precise about what these scores mean: transformers.js's `zero-shot-image-classification` pipeline doesn't return raw cosine similarity — it scales the image/text similarity logits and normalizes (softmax) them across the candidate set, so scores sum to 1 across labels but are still *relative to the other candidates in the vocabulary*, not calibrated real-world confidence — a score of 0.31 for "capacitor" means "favored over the other words in this list," not "31% confident." Any accept/reject threshold needs per-domain, per-vocabulary tuning, not a fixed default.
+1. **Zero-shot tagging against a customer-supplied vocabulary.** Given a fixed list of candidate labels (e.g. "capacitor", "resistor", "connector"), each photo is scored against a template like `"a photo of a {label}"` for every label, and the highest-scoring label(s) are proposed as tags. It's important to be precise about what these scores mean: transformers.js's `zero-shot-image-classification` pipeline doesn't return raw cosine similarity — it scales the image/text similarity logits and normalizes (softmax) them across the candidate set, so scores sum to 1 across labels but are still _relative to the other candidates in the vocabulary_, not calibrated real-world confidence — a score of 0.31 for "capacitor" means "favored over the other words in this list," not "31% confident." Any accept/reject threshold needs per-domain, per-vocabulary tuning, not a fixed default.
 
-2. **Exemplar tag propagation.** A human tags one photo (e.g. marks it "capacitor"), and the system proposes the same tag on its nearest neighbors in embedding space (a k-NN search), which a human confirms or rejects one by one. This is *label propagation on a k-NN graph*, applied here to cut tagging effort from "label every photo" to "label a few exemplars and confirm suggestions." Prior art: immich's search-by-example feature and Excire's auto-keywording both use this pattern in production photo tools.
+2. **Exemplar tag propagation.** A human tags one photo (e.g. marks it "capacitor"), and the system proposes the same tag on its nearest neighbors in embedding space (a k-NN search), which a human confirms or rejects one by one. This is _label propagation on a k-NN graph_, applied here to cut tagging effort from "label every photo" to "label a few exemplars and confirm suggestions." Prior art: immich's search-by-example feature and Excire's auto-keywording both use this pattern in production photo tools.
 
-**Honest limits.** CLIP-class zero-shot classification is reliable at coarse, everyday categories (cat vs. dog) but degrades on fine-grained, niche domains — exactly the electrical-components use case this PoC targets. One study measured mean zero-shot accuracy around **36%** on domain-specific label sets, and PCB-component classification needed few-shot fine-tuning (not zero-shot) to reach high accuracy. Practically: zero-shot vocabulary tagging is a reasonable *first pass* or *suggestion* mechanism for niche domains, not a reliable auto-labeler on its own — it needs a human in the loop, exemplar propagation, and/or fine-tuning.
+**Honest limits.** CLIP-class zero-shot classification is reliable at coarse, everyday categories (cat vs. dog) but degrades on fine-grained, niche domains — exactly the electrical-components use case this PoC targets. One study measured mean zero-shot accuracy around **36%** on domain-specific label sets, and PCB-component classification needed few-shot fine-tuning (not zero-shot) to reach high accuracy. Practically: zero-shot vocabulary tagging is a reasonable _first pass_ or _suggestion_ mechanism for niche domains, not a reliable auto-labeler on its own — it needs a human in the loop, exemplar propagation, and/or fine-tuning.
 
 ### 4.3 True auto-word-generation (captioning)
 
@@ -104,11 +104,11 @@ Separately, the VLM tagging mechanism from Section 4.3 sidesteps this whole prob
 Benchmarked on Node 24, using 512-dimension `Float32Array` vectors, on this-class development hardware:
 
 | Collection size | Query latency |
-|---|---|
-| 500 vectors | 0.33 ms |
-| 2,000 vectors | 1.3 ms |
-| 5,000 vectors | 3.35 ms |
-| 20,000 vectors | 15.9 ms |
+| --------------- | ------------- |
+| 500 vectors     | 0.33 ms       |
+| 2,000 vectors   | 1.3 ms        |
+| 5,000 vectors   | 3.35 ms       |
+| 20,000 vectors  | 15.9 ms       |
 
 Memory footprint scales predictably: 5,000 vectors × 512 dims × 4 bytes ≈ 10MB. The practical conclusion is that **exact brute-force cosine search stays fast and correct up to roughly tens of thousands of images** — an approximate nearest-neighbor (ANN) index buys nothing at PoC scale and would only add complexity.
 

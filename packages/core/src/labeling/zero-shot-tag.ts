@@ -39,7 +39,9 @@ export function zeroShotTag(
       const score = dot(imageVector, vocabVector);
       if (score >= threshold) scores.push({ label, score });
     }
-    scores.sort((a, b) => b.score - a.score || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
+    scores.sort(
+      (a, b) => b.score - a.score || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0),
+    );
     return scores;
   });
 }

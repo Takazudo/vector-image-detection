@@ -33,7 +33,10 @@ describe("vis search", () => {
     logger.logLines.length = 0;
     const code = await runCli(["search", "a photo of a cat", "--index", "demo", "-k", "4"], deps);
     expect(code).toBe(0);
-    const lines = logger.logLines.join("\n").split("\n").filter((line) => line.includes(".jpg"));
+    const lines = logger.logLines
+      .join("\n")
+      .split("\n")
+      .filter((line) => line.includes(".jpg"));
     const firstCatRank = lines.findIndex((line) => line.includes("cat-"));
     const firstDogRank = lines.findIndex((line) => line.includes("dog-"));
     expect(firstCatRank).toBeGreaterThanOrEqual(0);

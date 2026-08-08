@@ -42,7 +42,9 @@ export async function proposeTagPropagation(
   if (exemplars.length !== exemplarIds.length) {
     const found = new Set(exemplars.map((item) => item.id));
     const missing = exemplarIds.filter((id) => !found.has(id));
-    throw new Error(`proposeTagPropagation: exemplar id(s) not found in store: ${missing.join(", ")}`);
+    throw new Error(
+      `proposeTagPropagation: exemplar id(s) not found in store: ${missing.join(", ")}`,
+    );
   }
 
   const dim = exemplars[0]!.vector.length;
@@ -92,7 +94,11 @@ export async function proposeTagPropagation(
 
   const MAX_WIDEN_ATTEMPTS = 3;
   const WIDEN_FACTOR = 4;
-  for (let attempt = 0; proposals.length < limit && k < total && attempt < MAX_WIDEN_ATTEMPTS; attempt++) {
+  for (
+    let attempt = 0;
+    proposals.length < limit && k < total && attempt < MAX_WIDEN_ATTEMPTS;
+    attempt++
+  ) {
     k = Math.min(k * WIDEN_FACTOR, total);
     hits = await store.search(meanVector, k, (payload) => !alreadyTagged(payload));
     proposals = collectProposals(hits);

@@ -29,10 +29,22 @@ describe("vis CLI round trip", () => {
     const metaRaw = JSON.parse(await fs.readFile(path.join(indexDir, "meta.json"), "utf8"));
     expect(metaRaw.items).toHaveLength(6);
     await expect(fs.stat(path.join(indexDir, "embeddings.bin"))).resolves.toBeDefined();
-    for (const item of metaRaw.items as { file: string; thumb: string; tags: string[]; knownLabel: string; source: string; license: string; author: string }[]) {
+    for (const item of metaRaw.items as {
+      file: string;
+      thumb: string;
+      tags: string[];
+      knownLabel: string;
+      source: string;
+      license: string;
+      author: string;
+    }[]) {
       expect(item.tags).toEqual([]);
       expect(item.knownLabel).toBe(item.file.startsWith("cat") ? "cat" : "dog");
-      expect(item.source).toBe(item.file.startsWith("cat") ? "https://example.test/cat-source" : "https://example.test/dog-source");
+      expect(item.source).toBe(
+        item.file.startsWith("cat")
+          ? "https://example.test/cat-source"
+          : "https://example.test/dog-source",
+      );
       expect(item.license).toBe("CC0 1.0");
       expect(item.author).toBe("Fixture Author");
       await expect(fs.stat(path.join(indexDir, item.thumb))).resolves.toBeDefined();
@@ -40,7 +52,10 @@ describe("vis CLI round trip", () => {
 
     // 2. search
     logger.logLines.length = 0;
-    const searchCode = await runCli(["search", "a photo of a cat", "--index", "demo", "-k", "3"], deps);
+    const searchCode = await runCli(
+      ["search", "a photo of a cat", "--index", "demo", "-k", "3"],
+      deps,
+    );
     expect(searchCode).toBe(0);
     const searchTable = logger.logLines.join("\n");
     for (let i = 1; i <= 3; i++) expect(searchTable).toContain(`cat-${i}.jpg`);
@@ -76,7 +91,17 @@ describe("vis CLI round trip", () => {
     // already-tagged filter in proposeTagPropagation doesn't drop everything)
     logger.logLines.length = 0;
     const propagateCode = await runCli(
-      ["tag", "propagate", "cat-1.jpg", "favorite", "--threshold", "0.5", "--index", "demo", "--yes"],
+      [
+        "tag",
+        "propagate",
+        "cat-1.jpg",
+        "favorite",
+        "--threshold",
+        "0.5",
+        "--index",
+        "demo",
+        "--yes",
+      ],
       deps,
     );
     expect(propagateCode).toBe(0);
@@ -94,7 +119,10 @@ describe("vis CLI round trip", () => {
     logger.logLines.length = 0;
     const clusterCode = await runCli(["cluster", "--k", "2", "--index", "demo", "--json"], deps);
     expect(clusterCode).toBe(0);
-    const clusterOutput = JSON.parse(logger.logLines.join("\n")) as { cluster: number; files: string[] }[];
+    const clusterOutput = JSON.parse(logger.logLines.join("\n")) as {
+      cluster: number;
+      files: string[];
+    }[];
     expect(clusterOutput).toHaveLength(2);
     const allFiles = clusterOutput.flatMap((group) => group.files);
     expect(allFiles).toHaveLength(6);
@@ -111,7 +139,12 @@ describe("vis CLI round trip", () => {
     const demoDataDir = path.join(fixture.rootDir, "apps", "demo", "public", "data");
     const exportedMeta = JSON.parse(await fs.readFile(path.join(demoDataDir, "meta.json"), "utf8"));
     expect(exportedMeta.items).toHaveLength(6);
-    for (const item of exportedMeta.items as { file: string; license: string; author: string; thumb: string }[]) {
+    for (const item of exportedMeta.items as {
+      file: string;
+      license: string;
+      author: string;
+      thumb: string;
+    }[]) {
       expect(item.license).toBe("CC0 1.0");
       expect(item.author).toBe("Fixture Author");
       await expect(fs.stat(path.join(demoDataDir, item.thumb))).resolves.toBeDefined();

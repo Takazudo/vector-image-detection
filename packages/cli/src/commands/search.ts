@@ -20,11 +20,17 @@ export function registerSearchCommand(program: Command, deps: CliDeps): void {
     .option("-k, --k <n>", "number of results", "5")
     .option("--index <name>", "index name", DEFAULT_INDEX_NAME)
     .option("--backend <backend>", "memory or qdrant", "memory")
-    .option("--qdrant-url <url>", "Qdrant server URL (used with --backend qdrant)", "http://localhost:6333")
+    .option(
+      "--qdrant-url <url>",
+      "Qdrant server URL (used with --backend qdrant)",
+      "http://localhost:6333",
+    )
     .action(async (text: string, opts: SearchOptions) => {
       const k = parsePositiveInt(opts.k, "-k/--k");
       if (opts.backend !== "memory" && opts.backend !== "qdrant") {
-        throw new CliUsageError(`search: --backend must be "memory" or "qdrant", got "${opts.backend}"`);
+        throw new CliUsageError(
+          `search: --backend must be "memory" or "qdrant", got "${opts.backend}"`,
+        );
       }
 
       const indexDir = resolveIndexDir(deps.rootDir, opts.index);

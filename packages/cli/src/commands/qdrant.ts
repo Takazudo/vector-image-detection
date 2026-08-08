@@ -29,7 +29,9 @@ export function registerQdrantCommands(program: Command, deps: CliDeps): void {
 
   qdrantCmd
     .command("sync")
-    .description("Push the index into a Qdrant collection (overwrites; the index bundle stays the source of truth)")
+    .description(
+      "Push the index into a Qdrant collection (overwrites; the index bundle stays the source of truth)",
+    )
     .option("--index <name>", "index name", DEFAULT_INDEX_NAME)
     .option("--url <url>", "Qdrant server URL", "http://localhost:6333")
     .action(async (opts: QdrantSyncOptions) => {

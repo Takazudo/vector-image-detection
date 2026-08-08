@@ -22,7 +22,10 @@ describe("vis tag vlm", () => {
     const { deps, logger } = fakeDeps({
       rootDir: fixture.rootDir,
       vlmTag,
-      estimateCost: (imageCount) => ({ perImageUsd: [0.002, 0.004], totalUsd: [0.002 * imageCount, 0.004 * imageCount] }),
+      estimateCost: (imageCount) => ({
+        perImageUsd: [0.002, 0.004],
+        totalUsd: [0.002 * imageCount, 0.004 * imageCount],
+      }),
     });
     await runCli(["ingest", "photos", "--index", "demo"], deps);
     logger.logLines.length = 0;

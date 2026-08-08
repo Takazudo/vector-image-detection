@@ -84,7 +84,9 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
           vectors.push(vector);
         }
 
-        deps.logger.log(`ingest: ${Math.min(i + INGEST_BATCH_SIZE, images.length)}/${images.length}`);
+        deps.logger.log(
+          `ingest: ${Math.min(i + INGEST_BATCH_SIZE, images.length)}/${images.length}`,
+        );
       }
 
       const meta: IndexMeta = {

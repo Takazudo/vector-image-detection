@@ -10,7 +10,9 @@ export function registerTagCommands(program: Command, deps: CliDeps): void {
     .command("tag")
     .description("Tagging commands: vocab, propagate, vlm")
     .action(() => {
-      throw new CliUsageError("tag: choose a subcommand (vocab, propagate, vlm) — see `vis tag --help`");
+      throw new CliUsageError(
+        "tag: choose a subcommand (vocab, propagate, vlm) — see `vis tag --help`",
+      );
     });
 
   registerTagVocabCommand(tagCmd, deps);

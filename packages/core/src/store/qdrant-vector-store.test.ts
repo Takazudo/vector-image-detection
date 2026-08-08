@@ -95,6 +95,8 @@ describe.skipIf(!QDRANT_URL)("QdrantVectorStore (integration, requires QDRANT_UR
     expect(await store.count()).toBe(1);
     expect(await store.get(["a.jpg"])).toEqual([]);
 
-    await new QdrantClient({ url: QDRANT_URL as string }).deleteCollection(collection).catch(() => {});
+    await new QdrantClient({ url: QDRANT_URL as string })
+      .deleteCollection(collection)
+      .catch(() => {});
   });
 });

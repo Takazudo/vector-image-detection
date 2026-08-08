@@ -87,7 +87,9 @@ describe("vis ingest", () => {
     expect(reingestCode).toBe(0);
 
     const afterReingest = JSON.parse(await fs.readFile(metaPath, "utf8"));
-    const catAfter = afterReingest.items.find((item: { file: string }) => item.file === "cat-1.jpg");
+    const catAfter = afterReingest.items.find(
+      (item: { file: string }) => item.file === "cat-1.jpg",
+    );
     expect(catAfter.tags).toEqual(["cat"]); // not wiped back to [] by the rebuild
   });
 

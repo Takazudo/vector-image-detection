@@ -10,7 +10,10 @@ import { dot } from "./vector-math.js";
  * multi-label threshold proposals, picking a single best-of-set winner
  * degrades far less on a small, well-separated vocabulary.
  */
-export function classifyByVocab(imageVectors: Vector[], vocabVectors: Map<string, Vector>): TagScore[] {
+export function classifyByVocab(
+  imageVectors: Vector[],
+  vocabVectors: Map<string, Vector>,
+): TagScore[] {
   if (vocabVectors.size === 0) {
     throw new Error("classifyByVocab: vocabVectors must not be empty");
   }

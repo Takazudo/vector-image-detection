@@ -35,7 +35,10 @@ export function createRecordingLogger(): RecordingLogger {
 }
 
 /** `CliDeps` overrides wired to a 32-dim `FakeEmbedder` (network-free) plus a recording logger. */
-export function fakeDeps(overrides: Partial<CliDeps> = {}): { deps: Partial<CliDeps>; logger: RecordingLogger } {
+export function fakeDeps(overrides: Partial<CliDeps> = {}): {
+  deps: Partial<CliDeps>;
+  logger: RecordingLogger;
+} {
   const logger = createRecordingLogger();
   return {
     logger,

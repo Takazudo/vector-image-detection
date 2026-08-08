@@ -39,7 +39,9 @@ export function registerTagVocabCommand(tagCmd: Command, deps: CliDeps): void {
       for (const word of words) {
         const files = filesByLabel.get(word) ?? [];
         const examples = files.slice(0, 3).join(", ");
-        deps.logger.log(`${word}: ${files.length} match(es)${examples ? ` (e.g. ${examples})` : ""}`);
+        deps.logger.log(
+          `${word}: ${files.length} match(es)${examples ? ` (e.g. ${examples})` : ""}`,
+        );
       }
 
       if (!opts.apply) return;

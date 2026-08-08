@@ -13,7 +13,11 @@ describe("classifyByVocab", () => {
     const embedder = new FakeEmbedder({ dim: 32 });
     const vocabVectors = await embedVocab(embedder, ["cat", "dog"]);
 
-    const images = await embedder.embedImages(["photos/cat-01.jpg", "photos/dog-02.jpg", "photos/cat-03.jpg"]);
+    const images = await embedder.embedImages([
+      "photos/cat-01.jpg",
+      "photos/dog-02.jpg",
+      "photos/cat-03.jpg",
+    ]);
     const results = classifyByVocab(images, vocabVectors);
 
     expect(results.map((r) => r.label)).toEqual(["cat", "dog", "cat"]);

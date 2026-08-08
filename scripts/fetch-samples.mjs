@@ -80,9 +80,7 @@ function parseArgs(argv) {
     } else if (arg.startsWith("--limit-components=")) {
       args.limitComponents = Number(arg.split("=")[1]);
     } else if (arg === "--help" || arg === "-h") {
-      console.log(
-        "Usage: node scripts/fetch-samples.mjs [--limit-pets N] [--limit-components N]",
-      );
+      console.log("Usage: node scripts/fetch-samples.mjs [--limit-pets N] [--limit-components N]");
       process.exit(0);
     }
   }
@@ -304,23 +302,21 @@ async function fetchComponentCategory({ category, knownLabel, target, existingFi
 
         if (existingFileSet.has(file)) continue; // already recorded from a previous run
         if (existsSync(destPath)) {
-          newItems.push(
-            buildManifestItem({ id: file, file, knownLabel, source, license, author }),
-          );
+          newItems.push(buildManifestItem({ id: file, file, knownLabel, source, license, author }));
           continue;
         }
 
         try {
           await downloadFile(info.thumburl, destPath);
           downloaded++;
-          newItems.push(
-            buildManifestItem({ id: file, file, knownLabel, source, license, author }),
-          );
+          newItems.push(buildManifestItem({ id: file, file, knownLabel, source, license, author }));
           console.log(`  + ${file} (${license})`);
           await sleep(WIKIMEDIA_THROTTLE_MS);
         } catch (err) {
           n--; // slot wasn't actually claimed — let the next candidate reuse the index
-          console.warn(`Warning: failed to download component image (${page.title}): ${err.message}`);
+          console.warn(
+            `Warning: failed to download component image (${page.title}): ${err.message}`,
+          );
         }
       }
       gcmcontinue = data.continue?.gcmcontinue;
@@ -356,7 +352,9 @@ async function fetchComponentCategory({ category, knownLabel, target, existingFi
 
 async function fetchComponents(targetTotal, existingFileSet) {
   const perCategoryTargets = distributeTargets(targetTotal, COMPONENT_CATEGORIES.length);
-  console.log(`\nFetching components (target ${targetTotal}, split ${perCategoryTargets.join("/")} across categories)...`);
+  console.log(
+    `\nFetching components (target ${targetTotal}, split ${perCategoryTargets.join("/")} across categories)...`,
+  );
   const newItems = [];
   let downloaded = 0;
 
@@ -458,7 +456,9 @@ async function main() {
   console.log(
     `  Components: ${finalComponentCount}/${args.limitComponents} (${components.downloaded} downloaded, ${components.items.length - components.downloaded} reconciled from disk)`,
   );
-  console.log(`  Manifest:   ${path.relative(REPO_ROOT, MANIFEST_PATH)} (${allItems.length} items)`);
+  console.log(
+    `  Manifest:   ${path.relative(REPO_ROOT, MANIFEST_PATH)} (${allItems.length} items)`,
+  );
   console.log(`  Credits:    ${path.relative(REPO_ROOT, CREDITS_PATH)}`);
 
   const petsRatio = finalPetCount / args.limitPets;

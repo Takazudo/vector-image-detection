@@ -31,7 +31,17 @@ describe("vis tag propagate", () => {
     const { deps } = fakeDeps({ rootDir: fixture.rootDir, confirm: async () => false });
     await runCli(["ingest", "photos", "--index", "demo"], deps);
     const code = await runCli(
-      ["tag", "propagate", "cat-1.jpg", "favorite", "--threshold", "0.5", "--index", "demo", "--yes"],
+      [
+        "tag",
+        "propagate",
+        "cat-1.jpg",
+        "favorite",
+        "--threshold",
+        "0.5",
+        "--index",
+        "demo",
+        "--yes",
+      ],
       deps,
     );
     expect(code).toBe(0);
@@ -69,7 +79,17 @@ describe("vis tag propagate", () => {
     await runCli(["ingest", "photos", "--index", "demo"], deps);
     logger.logLines.length = 0;
     const code = await runCli(
-      ["tag", "propagate", "cat-1.jpg", "favorite", "--threshold", "0.999", "--index", "demo", "--yes"],
+      [
+        "tag",
+        "propagate",
+        "cat-1.jpg",
+        "favorite",
+        "--threshold",
+        "0.999",
+        "--index",
+        "demo",
+        "--yes",
+      ],
       deps,
     );
     expect(code).toBe(0);

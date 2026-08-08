@@ -15,10 +15,15 @@ interface TagVlmOptions {
 export function registerTagVlmCommand(tagCmd: Command, deps: CliDeps): void {
   tagCmd
     .command("vlm <ids...>")
-    .description("Tag images via the Claude API (packages/vlm-tagger) — uploads image bytes to Anthropic")
+    .description(
+      "Tag images via the Claude API (packages/vlm-tagger) — uploads image bytes to Anthropic",
+    )
     .option("--index <name>", "index name", DEFAULT_INDEX_NAME)
     .option("--language <lang>", "en or ja", "en")
-    .option("--confirm-upload", "required: confirms you accept uploading these images to the Claude API")
+    .option(
+      "--confirm-upload",
+      "required: confirms you accept uploading these images to the Claude API",
+    )
     .action(async (ids: string[], opts: TagVlmOptions) => {
       if (opts.language !== "en" && opts.language !== "ja") {
         throw new CliUsageError(`tag vlm: --language must be "en" or "ja", got "${opts.language}"`);
@@ -53,7 +58,8 @@ export function registerTagVlmCommand(tagCmd: Command, deps: CliDeps): void {
       // directory, and a smaller upload is a strict privacy/cost win anyway.
       const imagePaths = ids.map((id) => {
         const item = itemsById.get(id)!;
-        if (!item.thumb) throw new CliUsageError(`tag vlm: item "${id}" has no thumbnail — re-run ingest`);
+        if (!item.thumb)
+          throw new CliUsageError(`tag vlm: item "${id}" has no thumbnail — re-run ingest`);
         return path.join(indexDir, ...item.thumb.split("/"));
       });
 
@@ -67,8 +73,12 @@ export function registerTagVlmCommand(tagCmd: Command, deps: CliDeps): void {
           deps.logger.error(`tag vlm: ${id}: FAILED — ${result.error}`);
           continue;
         }
-        deps.logger.log(`tag vlm: ${id}: ${result.caption} — proposed tags: ${result.tags.join(", ")}`);
-        const accepted = await deps.confirm(`Apply proposed tags [${result.tags.join(", ")}] to ${id}?`);
+        deps.logger.log(
+          `tag vlm: ${id}: ${result.caption} — proposed tags: ${result.tags.join(", ")}`,
+        );
+        const accepted = await deps.confirm(
+          `Apply proposed tags [${result.tags.join(", ")}] to ${id}?`,
+        );
         if (accepted) confirmed.push({ id, tags: result.tags });
       }
 

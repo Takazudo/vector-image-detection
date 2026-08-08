@@ -66,7 +66,9 @@ describe("vis qdrant sync", () => {
     const connectionError = Object.assign(new Error("fetch failed"), {
       cause: new Error("connect ECONNREFUSED 127.0.0.1:6333"),
     });
-    const store = fakeVectorStore({ dropCollection: vi.fn(async () => Promise.reject(connectionError)) });
+    const store = fakeVectorStore({
+      dropCollection: vi.fn(async () => Promise.reject(connectionError)),
+    });
     const { deps, logger } = fakeDeps({ rootDir: fixture.rootDir, createQdrantStore: () => store });
     await runCli(["ingest", "photos", "--index", "demo"], deps);
 
@@ -90,7 +92,9 @@ describe("vis qdrant sync", () => {
   });
 
   it("a non-connection upsert failure still surfaces the original error message", async () => {
-    const store = fakeVectorStore({ upsert: vi.fn(async () => Promise.reject(new Error("dim mismatch"))) });
+    const store = fakeVectorStore({
+      upsert: vi.fn(async () => Promise.reject(new Error("dim mismatch"))),
+    });
     const { deps, logger } = fakeDeps({ rootDir: fixture.rootDir, createQdrantStore: () => store });
     await runCli(["ingest", "photos", "--index", "demo"], deps);
 
@@ -112,7 +116,9 @@ describe("vis search --backend qdrant", () => {
   });
 
   it("queries the Qdrant adapter instead of the in-memory store", async () => {
-    const hits: SearchHit[] = [{ id: "cat-1.jpg", score: 0.9, payload: { file: "cat-1.jpg", tags: [] } }];
+    const hits: SearchHit[] = [
+      { id: "cat-1.jpg", score: 0.9, payload: { file: "cat-1.jpg", tags: [] } },
+    ];
     const store = fakeVectorStore({ search: vi.fn(async () => hits) });
     const createQdrantStore = vi.fn(() => store);
     const { deps, logger } = fakeDeps({ rootDir: fixture.rootDir, createQdrantStore });
@@ -124,7 +130,11 @@ describe("vis search --backend qdrant", () => {
       deps,
     );
     expect(code).toBe(0);
-    expect(createQdrantStore).toHaveBeenCalledWith({ url: "http://q:1", collection: "vis-demo", dim: 32 });
+    expect(createQdrantStore).toHaveBeenCalledWith({
+      url: "http://q:1",
+      collection: "vis-demo",
+      dim: 32,
+    });
     expect(store.search).toHaveBeenCalledTimes(1);
     expect(logger.logLines.join("\n")).toContain("cat-1.jpg");
   });

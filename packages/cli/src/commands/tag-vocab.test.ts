@@ -41,7 +41,9 @@ describe("vis tag vocab", () => {
 
     await runCli(["tag", "vocab", "cat", "dog", "--index", "demo", "--apply"], deps);
     const secondPass = JSON.parse(await fs.readFile(metaPath, "utf8"));
-    const catItemAgain = secondPass.items.find((item: { file: string }) => item.file === "cat-1.jpg");
+    const catItemAgain = secondPass.items.find(
+      (item: { file: string }) => item.file === "cat-1.jpg",
+    );
     expect(catItemAgain.tags).toEqual(["cat"]); // no duplicate "cat" entries
   });
 

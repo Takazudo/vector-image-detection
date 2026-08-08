@@ -39,14 +39,21 @@ export function registerClusterCommand(program: Command, deps: CliDeps): void {
       if (opts.k !== undefined) {
         k = parsePositiveInt(opts.k, "--k");
         if (k > vectors.length) {
-          throw new CliUsageError(`cluster: --k (${k}) cannot exceed item count (${vectors.length})`);
+          throw new CliUsageError(
+            `cluster: --k (${k}) cannot exceed item count (${vectors.length})`,
+          );
         }
       } else {
         // --auto (or the default, when neither flag is given): silhouette-select
         // k from the candidates that fit this dataset size. Too small a dataset
         // for any candidate falls back to the largest valid k (2, if >= 2 items).
-        const candidates = SUGGEST_K_CANDIDATES.filter((candidate) => candidate <= vectors.length - 1);
-        k = candidates.length === 0 ? Math.min(2, vectors.length) : clustering.suggestK(vectors, candidates).k;
+        const candidates = SUGGEST_K_CANDIDATES.filter(
+          (candidate) => candidate <= vectors.length - 1,
+        );
+        k =
+          candidates.length === 0
+            ? Math.min(2, vectors.length)
+            : clustering.suggestK(vectors, candidates).k;
       }
 
       const { assignments } = clustering.kmeans(vectors, k);
