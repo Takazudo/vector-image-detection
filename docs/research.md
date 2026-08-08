@@ -61,7 +61,7 @@ This mechanism alone — no tags, no captions, nothing attached to the photos �
 
 The second mechanism is about producing labels *for* photos, using words the customer already cares about, without a human tagging every photo by hand. It has two parts:
 
-1. **Zero-shot tagging against a customer-supplied vocabulary.** Given a fixed list of candidate labels (e.g. "capacitor", "resistor", "connector"), each photo is scored against a template like `"a photo of a {label}"` for every label, and the highest-scoring label(s) are proposed as tags. It's important to be precise about what these scores mean: they are cosine similarities *relative to the other candidates in the vocabulary*, not calibrated probabilities — a score of 0.31 for "capacitor" means "closer to capacitor than to the other words in this list," not "31% confident." Any accept/reject threshold needs per-domain, per-vocabulary tuning, not a fixed default.
+1. **Zero-shot tagging against a customer-supplied vocabulary.** Given a fixed list of candidate labels (e.g. "capacitor", "resistor", "connector"), each photo is scored against a template like `"a photo of a {label}"` for every label, and the highest-scoring label(s) are proposed as tags. It's important to be precise about what these scores mean: transformers.js's `zero-shot-image-classification` pipeline doesn't return raw cosine similarity — it scales the image/text similarity logits and normalizes (softmax) them across the candidate set, so scores sum to 1 across labels but are still *relative to the other candidates in the vocabulary*, not calibrated real-world confidence — a score of 0.31 for "capacitor" means "favored over the other words in this list," not "31% confident." Any accept/reject threshold needs per-domain, per-vocabulary tuning, not a fixed default.
 
 2. **Exemplar tag propagation.** A human tags one photo (e.g. marks it "capacitor"), and the system proposes the same tag on its nearest neighbors in embedding space (a k-NN search), which a human confirms or rejects one by one. This is *label propagation on a k-NN graph*, applied here to cut tagging effort from "label every photo" to "label a few exemplars and confirm suggestions." Prior art: immich's search-by-example feature and Excire's auto-keywording both use this pattern in production photo tools.
 
@@ -120,7 +120,7 @@ Qdrant is the reference production vector database (Section 2), but it has no em
 docker run -p 6333:6333 -p 6334:6334 -v "$(pwd)/qdrant_storage:/qdrant/storage:z" qdrant/qdrant
 ```
 
-and talking to it via the official `@qdrant/js-client-rest` client, using `createCollection({ size, distance: 'Cosine' })`, `upsert`, and `query`. This is the adapter path used when the PoC needs to demonstrate the "production-shaped" storage backend rather than the default in-memory store.
+and talking to it via the official `@qdrant/js-client-rest` client, using `createCollection(collectionName, { vectors: { size, distance: 'Cosine' } })`, `upsert`, and `query`. This is the adapter path used when the PoC needs to demonstrate the "production-shaped" storage backend rather than the default in-memory store.
 
 ### Middle-ground options (not needed yet, noted for later)
 
