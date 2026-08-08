@@ -174,7 +174,7 @@ pnpm vis tag propagate cat-abyssinian-1.jpg fluffy --index pets
 
 ### 3. True auto-word generation — the VLM path (optional, paid)
 
-Mechanisms 1 and 2 never invent a word. This one does: a vision-language model looks at a photo and writes tags and a caption from scratch, including part numbers and markings printed on the object, directly in the language you ask for.
+Mechanisms 1 and 2 never invent a word. This one does: a vision-language model looks at a photo and writes tags and a caption from scratch, in the language you ask for. It is the only mechanism here that can read text printed on an object and turn it into a tag.
 
 ```sh
 pnpm vis tag vlm components/capacitor-1.jpg --index all --language ja --confirm-upload
@@ -182,7 +182,9 @@ pnpm vis tag vlm components/capacitor-1.jpg --index all --language ja --confirm-
 
 - **Privacy — photos leave your machine.** Every image passed to this command is uploaded to Anthropic's API and is subject to that service's data handling, not this repo's. This is the only part of the system that is not fully local. `--confirm-upload` is mandatory precisely so this can never happen by accident.
 - **Cost.** Claude Haiku 4.5 (the default) runs roughly **$0.002–0.004 per image** — on the order of **$2–10 for 1,000 photos**. A real batch run should use the [Message Batches API](https://platform.claude.com/docs/en/build-with-claude/batch-processing) for about half that. Ballparks, not quotes.
-- **Setup.** Requires `ANTHROPIC_API_KEY` in the environment. Images are downscaled to a ≤1024px long edge before upload to keep token cost predictable.
+- **Setup.** Requires `ANTHROPIC_API_KEY` in the environment.
+- **Resolution — read this before judging OCR quality.** `vis tag vlm` uploads the index's **256px thumbnail**, not the original photo: the index bundle does not retain the source directory, and a smaller upload is a privacy and cost win (`packages/cli/src/commands/tag-vlm.ts`). The tagger library caps images at a ≤1024px long edge, but the CLI never reaches that cap. So expect solid object-level tags and captions from this command, and do **not** expect small printed part numbers to survive 256px. Reading fine markings needs the original resolution — call `vlmTag` directly with the source paths.
+- **What gets kept.** Only the tags you confirm are written back into `meta.json`. The caption is printed and then discarded, and the tagger's `readableText` field is not surfaced by the CLI at all — re-running to recover either one costs the API call again.
 - **Why it matters.** It is the quality ceiling for fine-grained domains, and it sidesteps the Japanese-language problem entirely — `--language ja` gets Japanese tags written directly rather than translated.
 
 Details and the cost table live in [`packages/vlm-tagger/README.md`](packages/vlm-tagger/README.md).
@@ -202,7 +204,7 @@ pnpm vis cluster --k 2 --index pets
 pnpm vis cluster --auto --index all      # pick k via silhouette score
 ```
 
-**The honest ceiling.** Zero-shot classification is strong on coarse everyday categories and degrades on fine-grained niche domains — which is exactly the electrical-components case this PoC targets. Published measurements put mean zero-shot accuracy near 36% on domain-specific label sets, and PCB-component classification needed few-shot fine-tuning to get good. Cat-vs-dog at 100% is a real result and also an easy one. Distinguishing two capacitor models by part number is not something mechanisms 1 and 2 will do for you; that needs the VLM path or a small amount of fine-tuning. See `docs/research.md` §4.2.
+**The honest ceiling.** Zero-shot classification is strong on coarse everyday categories and degrades on fine-grained niche domains — which is exactly the electrical-components case this PoC targets. Published measurements put mean zero-shot accuracy near 36% on domain-specific label sets, and PCB-component classification needed few-shot fine-tuning to get good. Cat-vs-dog at 100% is a real result and also an easy one. Distinguishing two capacitor models by part number is not something mechanisms 1 and 2 will do for you; that needs the VLM path at full resolution (not `vis tag vlm`'s 256px thumbnails) or a small amount of fine-tuning. See `docs/research.md` §4.2.
 
 ---
 
