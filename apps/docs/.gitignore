@@ -1,0 +1,14 @@
+# Generated build and development output
+node_modules/
+dist/
+.zfb/
+.zfb-build/
+.zudo-doc/
+.wrangler/
+
+# Generated Claude-resource pages
+src/content/docs/claude/
+
+# Generated doc-lookup skills
+.claude/skills/vector-image-detection-docs-wisdom/
+.codex/skills/vector-image-detection-docs-wisdom/

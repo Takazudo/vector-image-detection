@@ -35,12 +35,15 @@ export function SimilarPanel({ ctx, onClose }: { ctx: DemoContext; onClose: () =
   if (!item) return null;
 
   return (
-    <aside className="similar" aria-label="Similar photos">
-      <header className="similar__header">
-        <h2 className="similar__title">Similar photos</h2>
+    <aside
+      className="flex flex-col gap-md rounded-md border border-line bg-surface p-md wide:sticky wide:top-md wide:max-h-panel-viewport wide:overflow-y-auto wide:overscroll-contain"
+      aria-label="Similar photos"
+    >
+      <header className="flex items-center justify-between gap-xs">
+        <h2 className="m-0 text-body font-semibold">Similar photos</h2>
         <button
           type="button"
-          className="similar__close"
+          className="grid min-h-control min-w-control cursor-pointer place-items-center rounded-md border border-line bg-surface text-muted hover-safe:bg-sunken active:translate-y-px [&_svg]:size-ui"
           aria-label="Close the similar photos panel"
           onClick={onClose}
         >
@@ -55,35 +58,35 @@ export function SimilarPanel({ ctx, onClose }: { ctx: DemoContext; onClose: () =
         </button>
       </header>
 
-      <div className="similar__query">
+      <div className="flex items-center gap-sm border-b border-line pb-md">
         <img
-          className="similar__query-thumb"
+          className="aspect-square h-auto w-thumb-lg rounded-sm bg-sunken object-cover"
           src={index.thumbUrl(item)}
           alt=""
           width={192}
           height={192}
           decoding="async"
         />
-        <div className="similar__query-meta">
-          <span className="similar__query-label">{itemLabel(item)}</span>
-          <AttributionPopover item={item} />
+        <div className="flex min-w-0 items-center gap-xs">
+          <span className="truncate text-sm font-semibold">{itemLabel(item)}</span>
+          <AttributionPopover item={item} placement="inline" />
         </div>
       </div>
 
       {neighbours === null ? (
-        <p className="similar__note">Ranking&hellip;</p>
+        <p className="m-0 text-sm text-muted">Ranking&hellip;</p>
       ) : (
-        <ol className="similar__list">
+        <ol className="m-0 flex list-none flex-col gap-xs p-0">
           {neighbours.map((neighbour) => (
-            <li key={neighbour.item.id} className="similar__row">
+            <li key={neighbour.item.id}>
               <button
                 type="button"
-                className="similar__row-hit"
+                className="grid-similar-row grid min-h-control w-full cursor-pointer items-center gap-xs rounded-sm border-0 bg-transparent p-3xs text-start hover-safe:bg-sunken active:bg-sunken"
                 aria-label={`Show photos similar to ${itemLabel(neighbour.item)}`}
                 onClick={() => ctx.onSelect(neighbour.item.id)}
               >
                 <img
-                  className="similar__thumb"
+                  className="aspect-square h-auto w-thumb-sm rounded-sm bg-sunken object-cover"
                   src={index.thumbUrl(neighbour.item)}
                   alt=""
                   width={192}
@@ -91,11 +94,13 @@ export function SimilarPanel({ ctx, onClose }: { ctx: DemoContext; onClose: () =
                   loading="lazy"
                   decoding="async"
                 />
-                <span className="similar__row-body">
-                  <span className="similar__row-label">{itemLabel(neighbour.item)}</span>
+                <span className="flex min-w-0 flex-col gap-3xs">
+                  <span className="truncate text-xs">{itemLabel(neighbour.item)}</span>
                   <ScoreBar score={neighbour.score} label={`Similarity to ${itemLabel(item)}`} />
                 </span>
-                <span className="similar__row-score">{formatScore(neighbour.score)}</span>
+                <span className="text-end text-xs text-muted tabular-nums">
+                  {formatScore(neighbour.score)}
+                </span>
               </button>
             </li>
           ))}

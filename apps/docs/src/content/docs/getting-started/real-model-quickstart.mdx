@@ -1,0 +1,22 @@
+---
+title: 実モデルとサンプル写真で試す
+description: SigLIP で写真を取り込み、検索してデモへ出力する
+sidebar_position: 3
+---
+
+```sh
+pnpm install
+pnpm build
+pnpm fetch-samples
+pnpm vis ingest data/samples --index all
+pnpm vis ingest data/samples/pets --index pets
+pnpm vis search "cat" --index all
+pnpm vis export-demo --index all
+pnpm demo:dev
+```
+
+最初の `ingest` は `Xenova/siglip-base-patch16-224` の q8 モデル（約 200 MB）を Hugging Face からダウンロードし、`~/.cache/vector-image-detection/models` にキャッシュします。以後はキャッシュを再利用します。ネットワーク接続とこの初回ダウンロードを許容できる環境で実行してください。
+
+`fetch-samples` は Oxford-IIIT Pet と Wikimedia Commons からライセンス情報付きのサンプル約 100 枚を `data/samples/` にダウンロードします。`data/` は Git 管理されず、再実行時は既存ファイルをスキップします。取得数は `--limit-pets N`、`--limit-components N` で減らせます。
+
+`--index` ごとに `data/indexes/<name>/` が作られます。写真の集合、語彙、実験は index 名で分離できます。次は [インデックスと検索](/docs/concepts/index-and-search) を読んでください。

@@ -1,4 +1,4 @@
-import type { IndexItem } from "@vector-image-detection/core/browser";
+import type { IndexItem } from "../generated/core-browser.mjs";
 
 /** Similarity scores are cosine similarities in [-1, 1]; three decimals is enough to rank by eye. */
 export function formatScore(score: number): string {

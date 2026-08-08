@@ -1,8 +1,11 @@
+"use client";
+
 import { useCallback, useMemo, useState } from "react";
 import { EmbedderStatusBar } from "./components/EmbedderStatusBar";
 import { MissingBundle } from "./components/MissingBundle";
 import { SimilarPanel } from "./components/SimilarPanel";
 import { TagStoreBar } from "./components/TagStoreBar";
+import { tabClass } from "./components/ui";
 import { useDemoIndex } from "./hooks/use-demo-index";
 import { useEmbedder } from "./hooks/use-embedder";
 import { useStoreTagSync } from "./hooks/use-store-tag-sync";
@@ -20,15 +23,15 @@ export function App() {
 
   if (state.phase === "loading") {
     return (
-      <main className="app app--centered">
-        <p className="app__loading">Loading the index bundle&hellip;</p>
+      <main className="grid min-h-screen place-items-center px-md py-lg">
+        <p className="text-muted">Loading the index bundle&hellip;</p>
       </main>
     );
   }
 
   if (state.phase === "missing") {
     return (
-      <main className="app app--centered">
+      <main className="grid min-h-screen place-items-center px-md py-lg">
         <MissingBundle message={state.message} onRetry={state.reload} />
       </main>
     );
@@ -62,21 +65,21 @@ function Workspace({ index }: { index: DemoIndex }) {
   const showPanel = selectedId !== null && view !== "attach";
 
   return (
-    <div className="app">
-      <header className="masthead">
-        <div className="masthead__brand">
-          <h1 className="masthead__title">Photo vector search</h1>
-          <p className="masthead__subtitle">
+    <div className="mx-auto max-w-screen-2xl px-md pt-lg pb-xxl">
+      <header className="flex flex-wrap items-end justify-between gap-md border-b border-line pb-md">
+        <div>
+          <h1 className="m-0 text-title font-semibold tracking-tight">Photo vector search</h1>
+          <p className="mt-3xs mb-0 text-sm text-muted">
             {index.items.length} photos &middot; {index.meta.dim}-dimensional vectors &middot;{" "}
             <code>{index.meta.modelId}</code>
           </p>
         </div>
-        <nav className="masthead__nav" aria-label="Views">
+        <nav className="flex flex-wrap gap-3xs" aria-label="Views">
           {VIEWS.map((entry) => (
             <button
               key={entry.id}
               type="button"
-              className={`tab${view === entry.id ? " tab--active" : ""}`}
+              className={tabClass(view === entry.id)}
               aria-current={view === entry.id ? "page" : undefined}
               onClick={() => setView(entry.id)}
             >
@@ -91,8 +94,10 @@ function Workspace({ index }: { index: DemoIndex }) {
 
       {/* In "attach" a photo click picks an exemplar rather than a neighbour query,
           so that view owns its own selection and gets no side panel. */}
-      <div className={`workspace${showPanel ? " workspace--with-panel" : ""}`}>
-        <main className="workspace__main">
+      <div
+        className={`mt-xl grid items-start gap-xl ${showPanel ? "wide:grid-workspace-panel" : ""}`}
+      >
+        <main className="min-w-0">
           {view === "gallery" && <GalleryView ctx={ctx} />}
           {view === "categorize" && <CategorizeView ctx={ctx} />}
           {view === "search" && <SearchView ctx={ctx} />}

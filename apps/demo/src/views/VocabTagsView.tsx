@@ -1,10 +1,24 @@
-import type { Vector } from "@vector-image-detection/core/browser";
-import { labeling } from "@vector-image-detection/core/browser";
+import type { Vector } from "../generated/core-browser.mjs";
+import { labeling } from "../generated/core-browser.mjs";
 import { useMemo, useState } from "react";
 import { AttributionPopover } from "../components/AttributionPopover";
 import { ScoreBar } from "../components/ScoreBar";
 import { TagChip } from "../components/TagChip";
 import { VocabularyField } from "../components/VocabularyField";
+import {
+  buttonClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldRangeClass,
+  growFieldClass,
+  toolbarClass,
+  viewClass,
+  viewErrorClass,
+  viewHeaderClass,
+  viewLedeClass,
+  viewNoteClass,
+  viewTitleClass,
+} from "../components/ui";
 import { canRequestEmbedding } from "../lib/embedder-client";
 import { embedderModeFor } from "../lib/embedder-protocol";
 import { itemLabel } from "../lib/format";
@@ -62,16 +76,16 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
   }
 
   return (
-    <section className="view">
-      <header className="view__header">
-        <h2 className="view__title">Vocabulary tags</h2>
-        <p className="view__lede">
+    <section className={viewClass}>
+      <header className={viewHeaderClass}>
+        <h2 className={viewTitleClass}>Vocabulary tags</h2>
+        <p className={viewLedeClass}>
           Every word is scored against every photo, and each photo keeps the words that clear the
           threshold. Unlike auto-categorize, a photo can end up with none, one, or several.
         </p>
       </header>
 
-      <div className="toolbar">
+      <div className={toolbarClass}>
         <VocabularyField
           id="tags-vocab"
           label="Vocabulary"
@@ -81,7 +95,7 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
         />
         <button
           type="button"
-          className="button button--primary"
+          className={buttonClass("primary")}
           disabled={busy || !canSubmit || labels.length === 0}
           onClick={() => void embedVocabulary()}
         >
@@ -89,18 +103,18 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
         </button>
       </div>
 
-      {error && <p className="view__error">Could not score the vocabulary: {error}</p>}
+      {error && <p className={viewErrorClass}>Could not score the vocabulary: {error}</p>}
 
       {tagged && coverage && (
         <>
-          <div className="toolbar">
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="tag-threshold">
+          <div className={toolbarClass}>
+            <div className={growFieldClass}>
+              <label className={fieldLabelClass} htmlFor="tag-threshold">
                 Threshold: {threshold.toFixed(2)}
               </label>
               <input
                 id="tag-threshold"
-                className="field__range"
+                className={fieldRangeClass}
                 type="range"
                 min={0}
                 max={1}
@@ -108,12 +122,12 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
                 value={threshold}
                 onChange={(event) => setThreshold(Number(event.target.value))}
               />
-              <p className="field__hint">
+              <p className={fieldHintClass}>
                 There is no universal right value — it is a per-dataset knob. Drag it and watch
                 coverage trade off against precision.
               </p>
             </div>
-            <label className="checkbox">
+            <label className="flex min-h-control items-center gap-2xs whitespace-nowrap text-sm text-muted [&_input]:accent-accent">
               <input
                 type="checkbox"
                 checked={showShare}
@@ -123,19 +137,22 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
             </label>
           </div>
 
-          <p className="view__note">
+          <p className={viewNoteClass}>
             <strong>{coverage.withTags}</strong> of {index.items.length} photos tagged,{" "}
             <strong>{coverage.total}</strong> tags in total.
           </p>
 
-          <ul className="tag-list">
+          <ul className="m-0 flex list-none flex-col gap-xs p-0">
             {index.items.map((item, i) => {
               const scores = tagged[i] ?? [];
               const share = showShare ? labeling.softmaxOverVocab(scores) : [];
               return (
-                <li key={item.id} className="tag-list__row">
+                <li
+                  key={item.id}
+                  className="flex items-center gap-sm rounded-md border border-line bg-surface p-xs"
+                >
                   <img
-                    className="tag-list__thumb"
+                    className="aspect-square h-auto w-thumb shrink-0 rounded-sm bg-sunken object-cover"
                     src={index.thumbUrl(item)}
                     alt=""
                     width={192}
@@ -143,15 +160,15 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
                     loading="lazy"
                     decoding="async"
                   />
-                  <div className="tag-list__body">
-                    <div className="tag-list__head">
-                      <span className="tag-list__label">{itemLabel(item)}</span>
-                      <AttributionPopover item={item} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-3xs">
+                    <div className="flex items-center gap-xs">
+                      <span className="text-sm font-semibold">{itemLabel(item)}</span>
+                      <AttributionPopover item={item} placement="inline" />
                     </div>
                     {scores.length === 0 ? (
-                      <p className="tag-list__none">No word clears the threshold.</p>
+                      <p className="m-0 text-xs text-subtle">No word clears the threshold.</p>
                     ) : (
-                      <ul className="tag-list__chips">
+                      <ul className="m-0 flex list-none flex-wrap gap-3xs p-0">
                         {scores.map((score) => (
                           <li key={score.label}>
                             <TagChip tag={score.label} score={score.score} />
@@ -160,16 +177,19 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
                       </ul>
                     )}
                     {showShare && share.length > 0 && (
-                      <div className="share">
-                        <p className="share__caption">
+                      <div className="mt-3xs flex flex-col gap-3xs">
+                        <p className="m-0 text-2xs text-subtle">
                           Relative share across the words that cleared the threshold — a display
                           normalization, not a probability or a confidence.
                         </p>
                         {share.map((entry) => (
-                          <div key={entry.label} className="share__row">
-                            <span className="share__label">{entry.label}</span>
+                          <div
+                            key={entry.label}
+                            className="grid-share grid items-center gap-xs text-xs"
+                          >
+                            <span className="truncate text-muted">{entry.label}</span>
                             <ScoreBar score={entry.score} label={`Share for ${entry.label}`} />
-                            <span className="share__value">
+                            <span className="text-end text-muted tabular-nums">
                               {Math.round(entry.score * 100)}&#37;
                             </span>
                           </div>

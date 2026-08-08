@@ -1,0 +1,161 @@
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+@custom-variant hover-safe (@media (hover: hover) { &:hover });
+
+@theme {
+  --color-page: oklch(97% 0.003 265);
+  --color-surface: oklch(100% 0 0);
+  --color-sunken: oklch(94% 0.005 265);
+  --color-ink: oklch(19% 0.014 265);
+  --color-muted: oklch(53% 0.013 265);
+  --color-subtle: oklch(72% 0.011 265);
+  --color-line: oklch(88% 0.007 265);
+  --color-line-strong: oklch(72% 0.011 265);
+  --color-accent: oklch(56% 0.15 258);
+  --color-accent-hover: oklch(46% 0.15 258);
+  --color-accent-ink: oklch(100% 0 0);
+  --color-accent-soft: oklch(96% 0.024 258);
+  --color-positive: oklch(48% 0.11 152);
+  --color-danger: oklch(52% 0.16 27);
+
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-3xs: 0.25rem;
+  --spacing-2xs: 0.375rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  --spacing-control: 2.75rem;
+  --spacing-icon: 1.75rem;
+  --spacing-ui: 0.875rem;
+  --spacing-thumb-sm: 2.5rem;
+  --spacing-thumb: 3.5rem;
+  --spacing-thumb-lg: 4rem;
+  --spacing-panel: 21rem;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-ui: 0.875rem;
+  --text-body: 0.9375rem;
+  --text-title: 1.25rem;
+  --font-weight-medium: 550;
+  --font-weight-semibold: 650;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-pill: 999px;
+  --shadow-selected: 0 0 0 1px var(--color-accent);
+  --shadow-popover: 0 1px 2px oklch(19% 0.014 265 / 0.09), 0 8px 24px oklch(19% 0.014 265 / 0.09);
+  --breakpoint-wide: 68rem;
+  --container-field: 20rem;
+  --container-store: 24rem;
+  --container-prose: 62ch;
+  --container-screen-2xl: 84rem;
+  --container-2xl: 42rem;
+  --tracking-tight: -0.01em;
+  --tracking-wide: 0.02em;
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-page: oklch(17% 0.012 265);
+    --color-surface: oklch(22% 0.014 265);
+    --color-sunken: oklch(26% 0.015 265);
+    --color-ink: oklch(94% 0.004 265);
+    --color-muted: oklch(70% 0.011 265);
+    --color-subtle: oklch(56% 0.013 265);
+    --color-line: oklch(31% 0.015 265);
+    --color-line-strong: oklch(42% 0.016 265);
+    --color-accent: oklch(74% 0.13 258);
+    --color-accent-hover: oklch(82% 0.11 258);
+    --color-accent-ink: oklch(19% 0.03 258);
+    --color-accent-soft: oklch(28% 0.05 258);
+    --color-positive: oklch(72% 0.13 152);
+    --color-danger: oklch(74% 0.14 27);
+    --shadow-popover: 0 1px 2px oklch(0% 0 0 / 0.4), 0 8px 24px oklch(0% 0 0 / 0.4);
+  }
+}
+
+@utility grid-auto-photo {
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+}
+
+@utility grid-auto-thumb {
+  grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
+}
+
+@utility grid-workspace-panel {
+  grid-template-columns: minmax(0, 1fr) var(--spacing-panel);
+}
+
+@utility grid-attribution {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+@utility grid-share {
+  grid-template-columns: 6rem minmax(0, 1fr) 2.5rem;
+}
+
+@utility grid-similar-row {
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.75rem;
+}
+
+@utility max-h-panel-viewport {
+  max-height: calc(100vh - var(--spacing-xl));
+}
+
+@utility popover-panel {
+  top: calc(100% + var(--spacing-3xs));
+  max-width: min(20rem, 70vw);
+}
+
+@utility z-popover {
+  z-index: 10;
+}
+
+@utility underline-offset-ui {
+  text-underline-offset: 0.2em;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+code {
+  border-radius: var(--radius-sm);
+  background: var(--color-sunken);
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+:where(a) {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+:where(button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

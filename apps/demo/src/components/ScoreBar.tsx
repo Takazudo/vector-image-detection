@@ -15,12 +15,12 @@ export function ScoreBar({ score, label }: ScoreBarProps) {
   const percent = scoreBarPercent(score);
   return (
     <span
-      className="score-bar"
+      className="block h-2xs w-full overflow-hidden rounded-pill bg-sunken"
       role="img"
       aria-label={`${label}: ${formatScore(score)}`}
       title={formatScore(score)}
     >
-      <span className="score-bar__fill" style={{ inlineSize: `${percent}%` }} />
+      <span className="block h-full rounded-pill bg-subtle" style={{ inlineSize: `${percent}%` }} />
     </span>
   );
 }

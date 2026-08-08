@@ -7,13 +7,13 @@ export interface TagChipProps {
 
 export function TagChip({ tag, score, onRemove }: TagChipProps) {
   return (
-    <span className="tag-chip">
-      <span className="tag-chip__label">{tag}</span>
-      {score !== undefined && <span className="tag-chip__score">{score.toFixed(2)}</span>}
+    <span className="inline-flex items-center gap-3xs rounded-sm bg-sunken py-3xs ps-2xs pe-3xs text-xs text-ink">
+      <span>{tag}</span>
+      {score !== undefined && <span className="text-subtle tabular-nums">{score.toFixed(2)}</span>}
       {onRemove && (
         <button
           type="button"
-          className="tag-chip__remove"
+          className="grid min-h-control min-w-control cursor-pointer place-items-center border-0 bg-transparent p-0 text-subtle hover-safe:text-danger active:text-danger [&_svg]:size-sm"
           aria-label={`Remove tag ${tag}`}
           onClick={onRemove}
         >

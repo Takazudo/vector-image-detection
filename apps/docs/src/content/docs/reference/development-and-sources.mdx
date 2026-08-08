@@ -1,0 +1,36 @@
+---
+title: 開発、検証、資料
+description: ローカル品質確認と、設計根拠をたどるための一次資料
+sidebar_position: 3
+---
+
+## 開発チェック
+
+```sh
+pnpm install
+pnpm build
+pnpm typecheck
+pnpm test
+pnpm format
+```
+
+通常のテストはオフラインで実行できます。実モデルのテストは `RUN_MODEL_TESTS=1`、実際の VLM 呼び出しを行う live test は `RUN_VLM_LIVE=1` と API キーが必要です。VLM の live test は費用と外部送信を伴うため、意図して実行してください。
+
+ドキュメントだけを確認するには次を使います。
+
+```sh
+pnpm --filter @vector-image-detection/docs run check
+pnpm --filter @vector-image-detection/docs run build
+```
+
+## 資料と帰属
+
+- [リポジトリ](https://github.com/Takazudo/vector-image-detection)
+- [README: クイックスタート、実装の全体像、production mapping](https://github.com/Takazudo/vector-image-detection/blob/main/README.md)
+- [研究ノート: モデル、ベンチマーク、日本語、先行事例](https://github.com/Takazudo/vector-image-detection/blob/main/docs/research.md)
+- [E2E 確認記録: 実モデルとサンプルデータでの結果](https://github.com/Takazudo/vector-image-detection/blob/main/docs/e2e-confirm-report.md)
+- [VLM tagger README: API、費用、失敗時の挙動](https://github.com/Takazudo/vector-image-detection/blob/main/packages/vlm-tagger/README.md)
+- [Classmethod の production case study](https://dev.classmethod.jp/articles/search-dance-movie-with-vertexai-and-qdrant/)
+- [transformers.js のドキュメント](https://huggingface.co/docs/transformers.js)
+
+サンプル画像の出典・ライセンス・作者情報は取得時の manifest から index bundle に引き継がれ、デモでも表示できます。再配布や本番利用では、個々の素材の利用条件を確認してください。

@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
 import { PhotoCard } from "../components/PhotoCard";
+import {
+  photoGridClass,
+  pillClass,
+  viewClass,
+  viewHeaderClass,
+  viewLedeClass,
+  viewNoteClass,
+  viewTitleClass,
+} from "../components/ui";
 import type { DemoContext } from "../types";
 
 export function GalleryView({ ctx }: { ctx: DemoContext }) {
@@ -23,21 +32,23 @@ export function GalleryView({ ctx }: { ctx: DemoContext }) {
   );
 
   return (
-    <section className="view">
-      <header className="view__header">
-        <h2 className="view__title">Gallery</h2>
-        <p className="view__lede">
+    <section className={viewClass}>
+      <header className={viewHeaderClass}>
+        <h2 className={viewTitleClass}>Gallery</h2>
+        <p className={viewLedeClass}>
           {index.items.length} photos from the index bundle. Click any photo to see its nearest
           neighbours; the info icon shows the credit fields the bundle carries.
         </p>
       </header>
 
       {allTags.length > 0 && (
-        <div className="filter-row">
-          <span className="filter-row__label">Filter by tag</span>
+        <div className="flex flex-wrap items-center gap-xs">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Filter by tag
+          </span>
           <button
             type="button"
-            className={`pill${tagFilter === null ? " pill--active" : ""}`}
+            className={pillClass(tagFilter === null)}
             onClick={() => setTagFilter(null)}
           >
             All
@@ -46,19 +57,19 @@ export function GalleryView({ ctx }: { ctx: DemoContext }) {
             <button
               key={tag}
               type="button"
-              className={`pill${tagFilter === tag ? " pill--active" : ""}`}
+              className={pillClass(tagFilter === tag)}
               onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
             >
-              {tag} <span className="pill__count">{count}</span>
+              {tag} <span className="text-subtle tabular-nums">{count}</span>
             </button>
           ))}
         </div>
       )}
 
       {visible.length === 0 ? (
-        <p className="view__empty">No photos carry that tag.</p>
+        <p className={viewNoteClass}>No photos carry that tag.</p>
       ) : (
-        <div className="photo-grid">
+        <div className={photoGridClass()}>
           {visible.map((item) => (
             <PhotoCard
               key={item.id}

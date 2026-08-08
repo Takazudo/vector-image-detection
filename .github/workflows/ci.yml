@@ -51,5 +51,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Check generated docs
+        run: pnpm --filter @vector-image-detection/docs run check
+
       - name: Test
         run: pnpm test
+
+      - name: Assert deployable static assets
+        run: pnpm run cloudflare:assets
+
+      - name: Dry-run Cloudflare delivery
+        run: pnpm run cloudflare:dry-run

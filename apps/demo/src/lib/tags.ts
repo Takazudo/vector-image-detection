@@ -1,4 +1,4 @@
-import type { IndexItem, IndexMeta } from "@vector-image-detection/core/browser";
+import type { IndexItem, IndexMeta } from "../generated/core-browser.mjs";
 
 /**
  * Confirmed, user-added tags keyed by item id — the demo's stand-in for
