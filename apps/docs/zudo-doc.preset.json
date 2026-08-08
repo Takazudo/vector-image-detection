@@ -1,0 +1,29 @@
+{
+  "projectName": "vector-image-detection",
+  "defaultLang": "ja",
+  "colorSchemeMode": "light-dark",
+  "lightScheme": "Default Light",
+  "darkScheme": "Default Dark",
+  "defaultMode": "dark",
+  "respectPrefersColorScheme": true,
+  "features": [
+    "search",
+    "sidebarFilter",
+    "imageEnlarge",
+    "dynamicPageTransition",
+    "footerCopyright",
+    "claudeResources",
+    "sidebarResizer",
+    "sidebarToggle",
+    "tocToggle",
+    "llmsTxt",
+    "skillSymlinker"
+  ],
+  "cjkFriendly": true,
+  "packageManager": "pnpm",
+  "headerRightItems": [
+    { "type": "component", "component": "github-link" },
+    { "type": "component", "component": "theme-toggle" },
+    { "type": "component", "component": "search" }
+  ]
+}
