@@ -1,7 +1,23 @@
-import { labeling } from "@vector-image-detection/core/browser";
+import { labeling } from "../generated/core-browser.mjs";
 import { useState } from "react";
 import { PhotoCard } from "../components/PhotoCard";
 import { ScoreBar } from "../components/ScoreBar";
+import {
+  buttonClass,
+  fieldHintClass,
+  fieldInputClass,
+  fieldLabelClass,
+  fieldRangeClass,
+  growFieldClass,
+  photoGridClass,
+  toolbarClass,
+  viewClass,
+  viewErrorClass,
+  viewHeaderClass,
+  viewLedeClass,
+  viewNoteClass,
+  viewTitleClass,
+} from "../components/ui";
 import { itemLabel } from "../lib/format";
 import {
   confirmedIds,
@@ -88,22 +104,22 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
   const confirmed = rows ? countByDecision(rows, "confirmed") : 0;
 
   return (
-    <section className="view">
-      <header className="view__header">
-        <h2 className="view__title">Attach your own word</h2>
-        <p className="view__lede">
+    <section className={viewClass}>
+      <header className={viewHeaderClass}>
+        <h2 className={viewTitleClass}>Attach your own word</h2>
+        <p className={viewLedeClass}>
           Pick one or more photos, give them a word of your own, then let the index propose which
           other photos deserve it. Nothing is written without your confirmation.
         </p>
       </header>
 
-      <ol className="steps">
-        <li className="steps__step">
-          <h3 className="steps__title">
+      <ol className="m-0 flex list-none flex-col gap-xl p-0">
+        <li className="flex flex-col gap-sm">
+          <h3 className="m-0 flex items-baseline gap-xs text-body font-semibold">
             1. Pick example photos
-            <span className="steps__count">{exemplarIds.length} selected</span>
+            <span className="text-xs font-medium text-muted">{exemplarIds.length} selected</span>
           </h3>
-          <div className="photo-grid photo-grid--compact">
+          <div className={photoGridClass(true)}>
             {index.items.map((item) => (
               <PhotoCard
                 key={item.id}
@@ -120,30 +136,32 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
           </div>
         </li>
 
-        <li className="steps__step">
-          <h3 className="steps__title">2. Give them a word</h3>
-          <div className="toolbar">
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="attach-word">
+        <li className="flex flex-col gap-sm">
+          <h3 className="m-0 flex items-baseline gap-xs text-body font-semibold">
+            2. Give them a word
+          </h3>
+          <div className={toolbarClass}>
+            <div className={growFieldClass}>
+              <label className={fieldLabelClass} htmlFor="attach-word">
                 Your word
               </label>
               <input
                 id="attach-word"
-                className="field__input"
+                className={fieldInputClass}
                 type="text"
                 value={word}
                 placeholder="e.g. keeper, reshoot, needs-review"
                 autoComplete="off"
                 onChange={(event) => setWord(event.target.value)}
               />
-              <p className="field__hint">
+              <p className={fieldHintClass}>
                 It does not have to mean anything to the model — propagation works from the example
                 photos&rsquo; vectors, not from the word.
               </p>
             </div>
             <button
               type="button"
-              className="button button--primary"
+              className={buttonClass("primary")}
               disabled={word.trim().length === 0 || exemplarIds.length === 0}
               onClick={attach}
             >
@@ -151,23 +169,25 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
             </button>
           </div>
           {attachedWord && (
-            <p className="view__note">
+            <p className={viewNoteClass}>
               <strong>{attachedWord}</strong> is attached to {exemplarIds.length}{" "}
               {exemplarIds.length === 1 ? "photo" : "photos"}. It already shows in the gallery.
             </p>
           )}
         </li>
 
-        <li className="steps__step">
-          <h3 className="steps__title">3. Propagate to similar photos</h3>
-          <div className="toolbar">
-            <div className="field field--grow">
-              <label className="field__label" htmlFor="propagate-threshold">
+        <li className="flex flex-col gap-sm">
+          <h3 className="m-0 flex items-baseline gap-xs text-body font-semibold">
+            3. Propagate to similar photos
+          </h3>
+          <div className={toolbarClass}>
+            <div className={growFieldClass}>
+              <label className={fieldLabelClass} htmlFor="propagate-threshold">
                 Similarity threshold: {threshold.toFixed(2)}
               </label>
               <input
                 id="propagate-threshold"
-                className="field__range"
+                className={fieldRangeClass}
                 type="range"
                 min={0}
                 max={1}
@@ -178,7 +198,7 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
             </div>
             <button
               type="button"
-              className="button button--primary"
+              className={buttonClass("primary")}
               disabled={busy || !attachedWord}
               onClick={() => void propagate()}
             >
@@ -186,10 +206,10 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
             </button>
           </div>
 
-          {error && <p className="view__error">Could not propose: {error}</p>}
+          {error && <p className={viewErrorClass}>Could not propose: {error}</p>}
 
           {rows && rows.length === 0 && (
-            <p className="view__empty">
+            <p className={viewNoteClass}>
               No untagged photo is within {threshold.toFixed(2)} of the example set. Lower the
               threshold or add more examples.
             </p>
@@ -197,15 +217,15 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
 
           {rows && rows.length > 0 && (
             <>
-              <div className="proposal-toolbar">
-                <p className="view__note">
+              <div className="flex flex-wrap items-center gap-sm">
+                <p className={`${viewNoteClass} basis-store grow`}>
                   {rows.length} proposals — {confirmed} confirmed, {pending} still to review. Scores
                   rank similarity to the example set&rsquo;s mean vector; they are not confidences,
                   which is why nothing is accepted for you.
                 </p>
                 <button
                   type="button"
-                  className="button button--quiet"
+                  className={buttonClass("quiet")}
                   disabled={pending === 0}
                   onClick={confirmAllPending}
                 >
@@ -213,7 +233,7 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
                 </button>
                 <button
                   type="button"
-                  className="button button--quiet"
+                  className={buttonClass("quiet")}
                   disabled={pending === 0}
                   onClick={() => setRows(decidePending(rows, "rejected"))}
                 >
@@ -221,14 +241,17 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
                 </button>
               </div>
 
-              <ul className="proposals">
+              <ul className="m-0 flex list-none flex-col gap-xs p-0">
                 {rows.map((row) => {
                   const item = index.itemById.get(row.id);
                   if (!item) return null;
                   return (
-                    <li key={row.id} className={`proposals__row proposals__row--${row.decision}`}>
+                    <li
+                      key={row.id}
+                      className={`flex items-center gap-sm rounded-md border bg-surface p-xs ${row.decision === "rejected" ? "border-line opacity-50" : row.decision === "confirmed" ? "border-line-strong" : "border-line"}`}
+                    >
                       <img
-                        className="proposals__thumb"
+                        className="aspect-square h-auto w-thumb shrink-0 rounded-sm bg-sunken object-cover"
                         src={index.thumbUrl(item)}
                         alt=""
                         width={192}
@@ -236,33 +259,35 @@ export function AttachWordView({ ctx }: { ctx: DemoContext }) {
                         loading="lazy"
                         decoding="async"
                       />
-                      <div className="proposals__body">
-                        <span className="proposals__label">{itemLabel(item)}</span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-3xs">
+                        <span className="text-sm font-semibold">{itemLabel(item)}</span>
                         <ScoreBar
                           score={row.score}
                           label={`Similarity to the example set for ${itemLabel(item)}`}
                         />
                       </div>
-                      <div className="proposals__actions">
+                      <div className="flex gap-3xs">
                         {row.decision === "pending" ? (
                           <>
                             <button
                               type="button"
-                              className="button button--confirm"
+                              className={buttonClass("confirm")}
                               onClick={() => confirmRow(row.id)}
                             >
                               Confirm
                             </button>
                             <button
                               type="button"
-                              className="button button--reject"
+                              className={buttonClass("reject")}
                               onClick={() => rejectRow(row.id)}
                             >
                               Reject
                             </button>
                           </>
                         ) : (
-                          <span className="proposals__decision">{row.decision}</span>
+                          <span className="text-xs font-semibold capitalize text-muted">
+                            {row.decision}
+                          </span>
                         )}
                       </div>
                     </li>

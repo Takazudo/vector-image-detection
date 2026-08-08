@@ -3,7 +3,7 @@ import type {
   Vector,
   VectorStore,
   VectorStoreItem,
-} from "@vector-image-detection/core/browser";
+} from "../generated/core-browser.mjs";
 import { mergeTags, type TagOverlay } from "./tags";
 
 export interface RankedItem {

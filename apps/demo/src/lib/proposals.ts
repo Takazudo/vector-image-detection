@@ -1,4 +1,4 @@
-import type { labeling } from "@vector-image-detection/core/browser";
+import type { labeling } from "../generated/core-browser.mjs";
 
 export type ProposalDecision = "pending" | "confirmed" | "rejected";
 

@@ -1,3 +1,5 @@
+import { fieldClass, fieldHintClass, fieldInputClass, fieldLabelClass } from "./ui";
+
 export interface VocabularyFieldProps {
   id: string;
   label: string;
@@ -9,13 +11,13 @@ export interface VocabularyFieldProps {
 /** Free-text vocabulary entry. Separators are commas and newlines, so multi-word labels survive. */
 export function VocabularyField({ id, label, value, hint, onChange }: VocabularyFieldProps) {
   return (
-    <div className="field">
-      <label className="field__label" htmlFor={id}>
+    <div className={`${fieldClass} basis-field grow`}>
+      <label className={fieldLabelClass} htmlFor={id}>
         {label}
       </label>
       <input
         id={id}
-        className="field__input"
+        className={fieldInputClass}
         type="text"
         value={value}
         spellCheck={false}
@@ -23,7 +25,7 @@ export function VocabularyField({ id, label, value, hint, onChange }: Vocabulary
         placeholder="cat, dog"
         onChange={(event) => onChange(event.target.value)}
       />
-      {hint && <p className="field__hint">{hint}</p>}
+      {hint && <p className={fieldHintClass}>{hint}</p>}
     </div>
   );
 }

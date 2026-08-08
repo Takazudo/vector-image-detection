@@ -1,5 +1,5 @@
-import type { Vector } from "@vector-image-detection/core/browser";
-import { labeling } from "@vector-image-detection/core/browser";
+import type { Vector } from "../generated/core-browser.mjs";
+import { labeling } from "../generated/core-browser.mjs";
 
 /**
  * `embedVocab` takes an `Embedder`, but in the browser the towers live in a Web

@@ -1,4 +1,4 @@
-import type { IndexItem } from "@vector-image-detection/core/browser";
+import type { IndexItem } from "../generated/core-browser.mjs";
 import { useEffect, useRef, useState } from "react";
 import { itemLabel } from "../lib/format";
 
@@ -7,7 +7,13 @@ import { itemLabel } from "../lib/format";
  * carries verbatim. Fields are optional per the `IndexItem` contract, so each is
  * rendered only when present rather than as an empty row.
  */
-export function AttributionPopover({ item }: { item: IndexItem }) {
+export function AttributionPopover({
+  item,
+  placement = "overlay",
+}: {
+  item: IndexItem;
+  placement?: "overlay" | "inline";
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -32,10 +38,13 @@ export function AttributionPopover({ item }: { item: IndexItem }) {
   const label = itemLabel(item);
 
   return (
-    <div className="attribution" ref={containerRef}>
+    <div
+      className={placement === "overlay" ? "absolute top-3xs right-3xs" : "relative"}
+      ref={containerRef}
+    >
       <button
         type="button"
-        className="attribution__trigger"
+        className="grid min-h-control min-w-control cursor-pointer place-items-center rounded-pill border border-line bg-surface text-muted hover-safe:border-line-strong hover-safe:text-ink active:bg-sunken [&_svg]:size-icon"
         aria-expanded={open}
         aria-label={`Attribution for ${label}`}
         onClick={() => setOpen((value) => !value)}
@@ -48,8 +57,12 @@ export function AttributionPopover({ item }: { item: IndexItem }) {
       </button>
 
       {open && (
-        <div className="attribution__panel" role="dialog" aria-label={`Attribution for ${label}`}>
-          <dl className="attribution__list">
+        <div
+          className="popover-panel z-popover absolute right-0 w-max rounded-md border border-line-strong bg-surface p-sm shadow-popover"
+          role="dialog"
+          aria-label={`Attribution for ${label}`}
+        >
+          <dl className="grid-attribution m-0 grid gap-x-xs gap-y-3xs text-xs [&_dd]:m-0 [&_dd]:wrap-anywhere [&_dt]:text-subtle">
             <dt>File</dt>
             <dd>{item.file}</dd>
             {item.author && (
@@ -76,7 +89,7 @@ export function AttributionPopover({ item }: { item: IndexItem }) {
             )}
           </dl>
           {!item.author && !item.license && !item.source && (
-            <p className="attribution__empty">
+            <p className="mt-xs mb-0 text-xs text-subtle">
               This item carries no credit fields. The ingest manifest supplies them.
             </p>
           )}
