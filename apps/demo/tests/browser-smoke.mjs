@@ -31,10 +31,17 @@ try {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const failures = [];
   const requested = [];
+  let expectedMissingBundleErrors = 0;
   page.on("request", (request) => requested.push(request.url()));
   page.on("requestfailed", (request) => failures.push(`${request.method()} ${request.url()}`));
   page.on("console", (message) => {
-    if (message.type() === "error") failures.push(`console: ${message.text()}`);
+    if (message.type() !== "error") return;
+    const { url } = message.location();
+    if (url.endsWith("/data/meta.json") && message.text().includes("404")) {
+      expectedMissingBundleErrors += 1;
+      return;
+    }
+    failures.push(`console: ${message.text()}`);
   });
 
   let failMetaOnce = true;
@@ -80,6 +87,11 @@ try {
 
   await page.reload({ waitUntil: "networkidle" });
   assert.match(await page.getByText(/confirmed tag/).textContent(), /1 confirmed tag/);
+  assert.equal(
+    await page.evaluate(() => fetch("/favicon.svg").then((response) => response.ok)),
+    true,
+  );
+  assert.equal(expectedMissingBundleErrors, 1);
   assert.deepEqual(failures, []);
   assert.equal(
     requested.some((url) => /huggingface|resolve\/main|model\.onnx/i.test(url)),

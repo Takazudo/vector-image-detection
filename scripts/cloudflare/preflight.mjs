@@ -24,7 +24,7 @@ function requiredEnvironment(environment) {
   return { accountId, token };
 }
 
-async function apiGet(fetchImpl, token, path, label) {
+async function apiGetPage(fetchImpl, token, path, label) {
   const response = await fetchImpl(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -36,7 +36,31 @@ async function apiGet(fetchImpl, token, path, label) {
   if (!payload.success) {
     throw new Error(`${label} request was rejected by Cloudflare.`);
   }
-  return payload.result ?? [];
+  return { result: payload.result ?? [], resultInfo: payload.result_info };
+}
+
+async function apiGet(fetchImpl, token, path, label) {
+  return (await apiGetPage(fetchImpl, token, path, label)).result;
+}
+
+export async function apiGetAllPages(fetchImpl, token, path, label) {
+  const separator = path.includes("?") ? "&" : "?";
+  const results = [];
+  let page = 1;
+
+  while (true) {
+    const { result, resultInfo } = await apiGetPage(
+      fetchImpl,
+      token,
+      `${path}${separator}per_page=100&page=${page}`,
+      label,
+    );
+    results.push(...result);
+
+    const totalPages = Number(resultInfo?.total_pages ?? 1);
+    if (page >= totalPages) return results;
+    page += 1;
+  }
 }
 
 function routeMatchesHostname(pattern, hostname) {
@@ -101,7 +125,12 @@ export async function preflight({ environment = process.env, fetchImpl = fetch }
   }
 
   const [domains, routes] = await Promise.all([
-    apiGet(fetchImpl, token, `/accounts/${accountId}/workers/domains`, "Worker-domain lookup"),
+    apiGetAllPages(
+      fetchImpl,
+      token,
+      `/accounts/${accountId}/workers/domains`,
+      "Worker-domain lookup",
+    ),
     apiGet(fetchImpl, token, `/zones/${zone.id}/workers/routes`, "Worker-route lookup"),
   ]);
 

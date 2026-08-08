@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SITES, inspectExistingConfiguration } from "./preflight.mjs";
+import { SITES, apiGetAllPages, inspectExistingConfiguration } from "./preflight.mjs";
 
 const accountId = "account-id";
 const zone = {
@@ -58,4 +58,37 @@ test("preflight rejects an existing DNS target unless it is this Worker custom d
       dnsRecords: [{ type: "CNAME" }],
     }),
   );
+});
+
+test("paginated lookups inspect every Worker custom-domain page", async () => {
+  const requested = [];
+  const fetchImpl = async (url) => {
+    requested.push(url);
+    const page = new URL(url).searchParams.get("page");
+    return {
+      ok: true,
+      async json() {
+        return {
+          success: true,
+          result: [{ hostname: `page-${page}.example.com` }],
+          result_info: { total_pages: 2 },
+        };
+      },
+    };
+  };
+
+  const results = await apiGetAllPages(
+    fetchImpl,
+    "token",
+    "/accounts/account-id/workers/domains",
+    "Worker-domain lookup",
+  );
+
+  assert.deepEqual(
+    results.map(({ hostname }) => hostname),
+    ["page-1.example.com", "page-2.example.com"],
+  );
+  assert.equal(requested.length, 2);
+  assert.match(requested[0], /per_page=100&page=1$/);
+  assert.match(requested[1], /per_page=100&page=2$/);
 });

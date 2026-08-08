@@ -3,10 +3,7 @@
 
 import type { JSX } from "preact";
 import { routeContext } from "virtual:zudo-doc-route-context";
-import {
-  createRouteContext,
-  type RouteContextPayload,
-} from "@takazudo/zudo-doc/route-context";
+import { createRouteContext, type RouteContextPayload } from "@takazudo/zudo-doc/route-context";
 import { createChrome } from "@takazudo/zudo-doc/chrome";
 import { chromeBindings } from "virtual:zudo-doc-chrome-bindings";
 

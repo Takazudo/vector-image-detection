@@ -65,7 +65,7 @@ function Workspace({ index }: { index: DemoIndex }) {
   const showPanel = selectedId !== null && view !== "attach";
 
   return (
-    <div className="mx-auto max-w-screen-2xl px-md pt-lg pb-2xl">
+    <div className="mx-auto max-w-screen-2xl px-md pt-lg pb-xxl">
       <header className="flex flex-wrap items-end justify-between gap-md border-b border-line pb-md">
         <div>
           <h1 className="m-0 text-title font-semibold tracking-tight">Photo vector search</h1>
