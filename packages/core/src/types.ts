@@ -35,6 +35,15 @@ export interface VectorStore {
   ): Promise<SearchHit[]>;
   delete(ids: string[]): Promise<void>;
   count(): Promise<number>;
+  /**
+   * Fetches full items (vector + payload) by id — e.g. needed to compute an
+   * exemplar-set mean vector for tag propagation (see
+   * labeling/propose-tag-propagation.ts), where a list of ids is the only
+   * handle available on the vectors to average. Ids not present in the store
+   * are simply omitted from the result (no error); result order follows
+   * `ids`, not insertion order.
+   */
+  get(ids: string[]): Promise<VectorStoreItem[]>;
 }
 
 export interface IndexItem {

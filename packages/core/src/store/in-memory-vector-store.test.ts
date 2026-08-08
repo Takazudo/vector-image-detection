@@ -88,6 +88,21 @@ describe("InMemoryVectorStore", () => {
     expect(hits.map((h) => h.id)).toEqual(["b"]);
   });
 
+  it("gets items by id, in request order, skipping ids not found", async () => {
+    const store = new InMemoryVectorStore();
+    await store.upsert([
+      item("a", vec(1, 0), { tags: ["cat"] }),
+      item("b", vec(0, 1), { tags: ["dog"] }),
+    ]);
+
+    const found = await store.get(["b", "missing", "a"]);
+    expect(found.map((i) => i.id)).toEqual(["b", "a"]);
+    expect(found[0]).toEqual(item("b", vec(0, 1), { tags: ["dog"] }));
+
+    expect(await store.get([])).toEqual([]);
+    expect(await store.get(["missing"])).toEqual([]);
+  });
+
   it("accepts an initial item set via the constructor", async () => {
     const store = new InMemoryVectorStore([item("seed", vec(1, 0))]);
     expect(await store.count()).toBe(1);

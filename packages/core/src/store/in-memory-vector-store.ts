@@ -49,6 +49,15 @@ export class InMemoryVectorStore implements VectorStore {
     for (const id of ids) this.items.delete(id);
   }
 
+  async get(ids: string[]): Promise<VectorStoreItem[]> {
+    const found: VectorStoreItem[] = [];
+    for (const id of ids) {
+      const item = this.items.get(id);
+      if (item) found.push(item);
+    }
+    return found;
+  }
+
   async count(): Promise<number> {
     return this.items.size;
   }
