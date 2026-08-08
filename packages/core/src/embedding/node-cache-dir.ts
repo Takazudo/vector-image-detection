@@ -34,9 +34,13 @@ export function configureNodeCacheDir(env: CacheDirEnv): Promise<void> {
   if (!configured) {
     configured = isNodeRuntime()
       ? (async () => {
+          // `@vite-ignore` keeps a web bundler from trying to resolve these at
+          // build time — they are unreachable in a browser thanks to the guard
+          // above, and without it a bundler emits an "externalized for browser
+          // compatibility" warning for a branch that never runs.
           const [{ default: os }, { default: path }] = await Promise.all([
-            import("node:os"),
-            import("node:path"),
+            import(/* @vite-ignore */ "node:os"),
+            import(/* @vite-ignore */ "node:path"),
           ]);
           env.cacheDir = path.join(os.homedir(), ...CACHE_DIR_SEGMENTS);
         })()

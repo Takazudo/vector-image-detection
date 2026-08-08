@@ -20,5 +20,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  // Node-side files: the Vite config plus the fixture bundle's acceptance test,
+  // which reads the committed bundle off disk rather than over HTTP.
+  "include": ["vite.config.ts", "fixtures/**/*.ts"]
 }
