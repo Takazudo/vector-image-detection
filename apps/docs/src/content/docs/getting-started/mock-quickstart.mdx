@@ -1,0 +1,20 @@
+---
+title: モックで 1 分試す
+description: モデルをダウンロードせず、デモの操作と配線を確認する
+sidebar_position: 2
+---
+
+Node.js 22.12 以上と pnpm 10 を用意し、リポジトリのルートで実行します。
+
+```sh
+pnpm install
+pnpm build
+pnpm demo:fixture
+pnpm demo:dev
+```
+
+表示された URL（通常は `http://localhost:5173`）を開きます。`demo:fixture` はコミット済みの fixture bundle を `apps/demo/public/data/` にコピーします。
+
+この bundle は `FakeEmbedder` が生成した決定的な形状画像とベクトルです。`meta.modelId` が `fake-embedder-v1` のため、デモは同じスタンドインで検索語も埋め込み、ギャラリー、検索、類似、語彙タグ、分類、見本からのタグ付与をオフラインで動かせます。
+
+ただし、結果は**構造的に正しくても意味的には無意味**です。実写真でどの程度見つかるかを示すものではありません。品質評価には [実モデルの手順](/docs/getting-started/real-model-quickstart) を使ってください。

@@ -1,0 +1,27 @@
+---
+title: CLI リファレンス
+description: vis の主要コマンドとインデックス指定
+sidebar_position: 2
+---
+
+`pnpm build` の後、リポジトリのルートで `pnpm vis` を使います。全コマンドの `--index <name>` は既定で `default` であり、`data/indexes/<name>/` を指します。
+
+| コマンド | 内容 |
+| --- | --- |
+| `vis ingest <dir>` | `jpg`/`png`/`webp` を埋め込み、bundle を作成 |
+| `vis search <text>` | テキストの上位近傍を表示。`-k`、`--backend memory\|qdrant`、`--qdrant-url` を指定可能 |
+| `vis similar <idOrPath>` | 登録済み ID または外部画像パスの近傍を表示 |
+| `vis cluster` | 球面 k-means。`--k <n>`、`--auto`、`--json` |
+| `vis tag vocab <words...>` | 語彙とのゼロショット候補。`--threshold`、`--apply` |
+| `vis tag propagate <id> <tag>` | 見本から近傍へタグを提案。`--threshold`、`--yes` |
+| `vis tag vlm <ids...>` | Claude API のタグ生成。`--language en\|ja`、`--confirm-upload` 必須 |
+| `vis qdrant sync` | index bundle を `vis-<index>` コレクションへ同期。`--url` |
+| `vis export-demo` | bundle とサムネイルを `apps/demo/public/data/` へコピー |
+
+```sh
+pnpm vis search --help
+pnpm vis tag vocab --help
+pnpm vis qdrant sync --help
+```
+
+出力の similarity score はランキングのための数値であり、確率ではありません。しきい値を固定の業務ルールにする前に、対象の写真と語彙で評価してください。

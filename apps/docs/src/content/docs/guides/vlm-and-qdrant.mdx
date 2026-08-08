@@ -1,0 +1,32 @@
+---
+title: VLM と Qdrant
+description: 外部送信を伴うタグ生成と、任意の Qdrant 検索バックエンド
+sidebar_position: 3
+---
+
+## VLM タグ付け: 実行前の確認
+
+```sh
+ANTHROPIC_API_KEY=... pnpm vis tag vlm components/capacitor-1.jpg \
+  --index all --language ja --confirm-upload
+```
+
+`vis tag vlm` は Claude Haiku 4.5 を既定に、タグと 1 行の caption を生成します。`--language ja` では日本語で直接出力されます。`ANTHROPIC_API_KEY` と、送信を明示する **`--confirm-upload`** が必須です。
+
+**写真は Anthropic API へアップロードされ、同サービスのデータ取扱いの対象になります。** 機密情報、個人情報、顧客資産が写る画像には、明示的な承認なしに使わないでください。この外部送信はローカル検索・語彙タグ・見本伝播にはありません。
+
+CLI は index 内の 256 px サムネイルを送ります。ライブラリーの上限は長辺 1024 px ですが、CLI はそこまでの解像度を送りません。物体レベルのタグには使えても、小さな品番や OCR を期待しないでください。元画像で細かい文字を扱う必要がある場合は、ソースパスで `vlmTag` を直接呼びます。
+
+費用は Haiku 4.5 で 1 枚あたり概算 $0.002〜$0.004（1,000 枚で約 $2〜$10）です。これは見積もりではなく、価格変更前提の目安です。実際の予算では [現在の Anthropic 料金](https://platform.claude.com/docs/en/about-claude/pricing) を確認してください。大量の本番バッチは Message Batches API で約半額にできますが、非同期で最大 24 時間かかり、この CLI には実装されていません。
+
+保存されるのは確認したタグだけです。caption は表示後に破棄され、`readableText` は CLI から表示しません。再取得には再度 API 呼び出しと費用がかかります。
+
+## Qdrant を使う
+
+```sh
+docker run -p 6333:6333 -p 6334:6334 -v "$(pwd)/qdrant_storage:/qdrant/storage:z" qdrant/qdrant
+pnpm vis qdrant sync --index all
+pnpm vis search "cat" --index all --backend qdrant
+```
+
+`qdrant sync` は `vis-<index>` コレクションを削除して index bundle の内容で作り直します。Qdrant 側だけの変更は次回同期で失われるため、bundle を正本として扱ってください。ローカルの in-memory と Qdrant は同じベクトルと cosine 検索を使い、実モデル検証では上位 5 件が byte-identical でした。
