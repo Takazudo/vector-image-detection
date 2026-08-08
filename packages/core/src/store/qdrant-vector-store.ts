@@ -34,6 +34,11 @@ export interface QdrantVectorStoreConfig {
 // large collection may then return fewer than k hits even if more exist.
 const FILTERED_SEARCH_MIN_CANDIDATES = 200;
 
+// Max points per upsert request — bounds request size (and peak memory) when
+// syncing a whole index; 256 × 768-dim float arrays stays well under default
+// HTTP body limits.
+const QDRANT_UPSERT_BATCH_SIZE = 256;
+
 /** `VectorStore` backed by a Qdrant collection, via `@qdrant/js-client-rest`. */
 export class QdrantVectorStore implements VectorStore {
   private readonly client: QdrantClient;
@@ -78,14 +83,19 @@ export class QdrantVectorStore implements VectorStore {
   async upsert(items: VectorStoreItem[]): Promise<void> {
     if (items.length === 0) return;
     await this.ensureCollection();
-    await this.client.upsert(this.collection, {
-      wait: true,
-      points: items.map((item) => ({
-        id: toQdrantPointId(item.id),
-        vector: Array.from(item.vector),
-        payload: { ...item.payload, [QDRANT_SOURCE_ID_PAYLOAD_KEY]: item.id },
-      })),
-    });
+    // Bounded batches: one giant upsert of a whole index can exceed Qdrant/proxy
+    // request-size limits and spike memory (each vector serializes to a JSON array).
+    for (let i = 0; i < items.length; i += QDRANT_UPSERT_BATCH_SIZE) {
+      const batch = items.slice(i, i + QDRANT_UPSERT_BATCH_SIZE);
+      await this.client.upsert(this.collection, {
+        wait: true,
+        points: batch.map((item) => ({
+          id: toQdrantPointId(item.id),
+          vector: Array.from(item.vector),
+          payload: { ...item.payload, [QDRANT_SOURCE_ID_PAYLOAD_KEY]: item.id },
+        })),
+      });
+    }
   }
 
   async search(

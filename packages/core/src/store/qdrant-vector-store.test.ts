@@ -100,3 +100,33 @@ describe.skipIf(!QDRANT_URL)("QdrantVectorStore (integration, requires QDRANT_UR
       .catch(() => {});
   });
 });
+
+describe("QdrantVectorStore.upsert batching (unit, no server)", () => {
+  it("splits large upserts into bounded batches instead of one giant request", async () => {
+    const store = new QdrantVectorStore({
+      url: "http://localhost:9",
+      collection: "batching-test",
+      dim: 4,
+    });
+    const upsertCalls: number[] = [];
+    const fakeClient = {
+      collectionExists: async () => ({ exists: true }),
+      upsert: async (_collection: string, args: { points: unknown[]; wait: boolean }) => {
+        expect(args.wait).toBe(true);
+        upsertCalls.push(args.points.length);
+      },
+    };
+    // Swap the private client for a recorder — the batching contract is
+    // about how many requests upsert() makes, not about a live server.
+    Reflect.set(store, "client", fakeClient);
+
+    const items = Array.from({ length: 600 }, (_, i) => ({
+      id: `item-${i}.jpg`,
+      vector: new Float32Array([1, 0, 0, 0]),
+      payload: {},
+    }));
+    await store.upsert(items);
+
+    expect(upsertCalls).toEqual([256, 256, 88]);
+  });
+});

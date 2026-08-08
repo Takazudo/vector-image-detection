@@ -110,4 +110,27 @@ describe("vis ingest", () => {
     const newItem = meta.items.find((item: { file: string }) => item.file === "cat-new.jpg");
     expect(newItem.tags).toEqual([]);
   });
+
+  it("keeps the previous thumbnails intact when a re-ingest fails mid-embed", async () => {
+    const { deps } = fakeDeps({ rootDir: fixture.rootDir });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], deps)).toBe(0);
+
+    const thumbsDir = path.join(fixture.rootDir, "data", "indexes", "demo", "thumbs");
+    const thumbFiles = await fs.readdir(thumbsDir, { recursive: true });
+    const firstThumb = thumbFiles.find((f) => String(f).endsWith(".jpg"));
+    expect(firstThumb).toBeDefined();
+    const before = await fs.readFile(path.join(thumbsDir, String(firstThumb)));
+
+    const failing = fakeDeps({
+      rootDir: fixture.rootDir,
+      createEmbedder: () => {
+        throw new Error("simulated embedder failure");
+      },
+    });
+    expect(await runCli(["ingest", "photos", "--index", "demo"], failing.deps)).not.toBe(0);
+
+    // Old thumbnails must be untouched — staging publishes only after saveIndex.
+    const after = await fs.readFile(path.join(thumbsDir, String(firstThumb)));
+    expect(after.equals(before)).toBe(true);
+  });
 });

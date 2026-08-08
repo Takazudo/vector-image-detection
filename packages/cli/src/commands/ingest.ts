@@ -45,6 +45,11 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
 
       const indexDir = resolveIndexDir(deps.rootDir, opts.index);
       const thumbsDir = resolveThumbsDir(indexDir);
+      // Thumbnails are generated into a staging dir and published only after
+      // the new bundle saves successfully — otherwise a failed re-ingest would
+      // leave old meta/vectors alongside already-overwritten thumbnails.
+      const thumbsStagingDir = `${thumbsDir}.staging`;
+      await fs.rm(thumbsStagingDir, { recursive: true, force: true });
 
       // Re-ingesting an index that already has confirmed tags (from `tag
       // vocab`/`propagate`/`vlm`) must not silently discard them — carry
@@ -69,7 +74,10 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
             toPosixRelative(manifest.manifestDir, image.absPath),
           );
           const thumbRelPath = toThumbRelPath(image.relPath);
-          await makeThumbnail(image.absPath, path.join(thumbsDir, ...thumbRelPath.split("/")));
+          await makeThumbnail(
+            image.absPath,
+            path.join(thumbsStagingDir, ...thumbRelPath.split("/")),
+          );
 
           items.push({
             id: image.relPath,
@@ -98,6 +106,8 @@ export function registerIngestCommand(program: Command, deps: CliDeps): void {
       };
 
       await store.saveIndex(indexDir, meta, vectors);
+      await fs.rm(thumbsDir, { recursive: true, force: true });
+      await fs.rename(thumbsStagingDir, thumbsDir);
       deps.logger.log(
         `ingest: wrote ${items.length} item(s) to ${path.relative(deps.rootDir, indexDir)}`,
       );

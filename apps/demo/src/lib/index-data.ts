@@ -19,6 +19,15 @@ export interface DemoIndex {
   thumbUrl: (item: IndexItem) => string;
 }
 
+/**
+ * Percent-encodes each segment of a bundle-relative path so filenames with
+ * URL-reserved characters (`#`, `?`, spaces…) fetch correctly, while `/`
+ * separators stay intact.
+ */
+export function encodeBundlePath(relPath: string): string {
+  return relPath.split("/").map(encodeURIComponent).join("/");
+}
+
 export async function loadDemoIndex(baseUrl = DATA_BASE_URL): Promise<DemoIndex> {
   const { meta, vectors } = await loadIndexFromUrl(baseUrl);
   const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
@@ -30,6 +39,6 @@ export async function loadDemoIndex(baseUrl = DATA_BASE_URL): Promise<DemoIndex>
     store: storeFromIndex(meta, vectors),
     itemById: new Map(meta.items.map((item) => [item.id, item])),
     vectorById: new Map(meta.items.map((item, i) => [item.id, vectors[i] as Vector])),
-    thumbUrl: (item) => `${base}${item.thumb ?? item.file}`,
+    thumbUrl: (item) => `${base}${encodeBundlePath(item.thumb ?? item.file)}`,
   };
 }
