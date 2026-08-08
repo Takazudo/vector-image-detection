@@ -9,12 +9,18 @@
   "scripts": {
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run && pnpm run test:scripts",
-    "test:scripts": "node --test scripts/lib/*.node-test.mjs",
+    "test:scripts": "node --test scripts/lib/*.node-test.mjs scripts/cloudflare/*.node-test.mjs",
     "build": "pnpm -r run build",
     "format": "prettier --write .",
     "fetch-samples": "node scripts/fetch-samples.mjs",
     "demo:fixture": "pnpm --filter @vector-image-detection/demo run fixture",
     "demo:dev": "pnpm --filter @vector-image-detection/demo run dev",
+    "docs:preview": "pnpm --filter @vector-image-detection/docs run preview",
+    "demo:preview": "pnpm --filter @vector-image-detection/demo run preview",
+    "cloudflare:assets": "node scripts/cloudflare/assert-assets.mjs",
+    "cloudflare:dry-run": "pnpm --filter @vector-image-detection/docs exec wrangler deploy --dry-run && pnpm --filter @vector-image-detection/demo exec wrangler deploy --dry-run",
+    "cloudflare:preflight": "node scripts/cloudflare/preflight.mjs",
+    "cloudflare:check": "pnpm build && pnpm typecheck && pnpm --filter @vector-image-detection/docs run check && pnpm test && pnpm run cloudflare:assets && pnpm run cloudflare:dry-run",
     "vis": "node packages/cli/dist/bin.js"
   },
   "devDependencies": {
