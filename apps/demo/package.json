@@ -7,9 +7,11 @@
     "dev": "zfb dev",
     "pretypecheck": "node scripts/bundle-core.mjs",
     "typecheck": "tsc -b && zfb check",
-    "prebuild": "node scripts/bundle-core.mjs",
+    "prebuild": "pnpm run fixture && node scripts/bundle-core.mjs",
     "build": "tsc -b && zfb build",
     "preview": "zfb preview",
+    "deploy": "pnpm run build && wrangler deploy",
+    "deploy:dry-run": "pnpm run build && wrangler deploy --dry-run",
     "test:output": "node --test tests/output.node-test.mjs",
     "test:smoke": "node tests/browser-smoke.mjs",
     "fixture": "node scripts/copy-fixture.mjs",
@@ -30,6 +32,7 @@
     "@huggingface/transformers": "4.2.0",
     "esbuild": "^0.27.4",
     "onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "wrangler": "4.120.0"
   }
 }

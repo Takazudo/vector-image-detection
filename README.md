@@ -274,6 +274,29 @@ Requires Node ≥ 22.12 and pnpm 10. Tests that need real model weights are gate
 
 End-to-end verification against the real model on real sample data is recorded in [`docs/e2e-confirm-report.md`](docs/e2e-confirm-report.md).
 
+## Hosted docs and demo
+
+The documentation and browser demo deploy as separate Cloudflare Workers Static Assets applications:
+
+- Docs: `doc-vector-image-detection.takazudomodular.com`
+- Demo: `vector-image-detection.takazudomodular.com`
+
+Both apps build to their own `dist/` directory. The docs Worker serves generated nested pages with trailing-slash handling and its generated `404.html`; the demo Worker uses SPA fallback so application deep links resolve to its shell while missing asset files still return a normal asset response. The demo build copies the committed fixture bundle before building, so `dist/data/` is always included in a clean checkout.
+
+For local release-readiness checks (these commands do not deploy), run:
+
+```sh
+pnpm build
+pnpm --filter @vector-image-detection/docs run preview
+pnpm --filter @vector-image-detection/demo run preview
+pnpm run cloudflare:assets
+pnpm run cloudflare:dry-run
+```
+
+`cloudflare:dry-run` runs Wrangler's non-mutating deploy plan for both apps. The authenticated `pnpm run cloudflare:preflight` additionally verifies that the account owns the active `takazudomodular.com` zone and refuses a hostname already bound to another Worker, route, or A/AAAA/CNAME record. It requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; keep both values in the environment or Actions secrets, never in a config file.
+
+Production deployment is intentionally limited to pushes to `main` in `.github/workflows/deploy-cloudflare.yml`. The token should be scoped to the target account and zone with only the Cloudflare permissions required to read the zone, DNS records, Workers domains/routes and to deploy the two Workers. Pull requests only build, validate assets, and dry-run Wrangler.
+
 ## For non-technical readers
 
 [`docs/customer-explainer.ja.md`](docs/customer-explainer.ja.md) explains the same system in Japanese, without jargon — what it can do, what it cannot, and what it costs.
