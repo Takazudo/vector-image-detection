@@ -7,4 +7,7 @@ apps/demo/public/data/
 worktrees/
 .cache/
 coverage/
+test-results/
 *.tsbuildinfo
+.wrangler/
+.wrangler.production.generated.json

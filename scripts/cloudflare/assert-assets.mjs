@@ -8,12 +8,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 function parseJsonc(source) {
-  return JSON.parse(
-    source
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,\s*([}\]])/g, "$1"),
-  );
+  return JSON.parse(source.replace(/,\s*([}\]])/g, "$1"));
 }
 
 const sites = {
@@ -36,6 +31,7 @@ const sites = {
   },
   demo: {
     directory: "apps/demo",
+    configFile: "wrangler.production.jsonc",
     expectedConfig: {
       name: "vector-image-detection-demo",
       hostname: "vector-image-detection.takazudomodular.com",
@@ -64,12 +60,19 @@ function assertConfig(siteName, config, expected) {
   assert.equal(config.assets?.directory, "./dist", `${siteName}: assets must deploy the app dist/`);
   assert.equal(config.assets?.html_handling, expected.htmlHandling);
   assert.equal(config.assets?.not_found_handling, expected.notFoundHandling);
+  if (siteName === "demo") {
+    assert.equal(config.main, "./src/worker/index.ts");
+    assert.equal(config.assets?.binding, "ASSETS");
+    assert.deepEqual(config.assets?.run_worker_first, ["/api/*"]);
+  }
 }
 
 async function assertSite(siteName) {
   const site = sites[siteName];
   const root = path.join(ROOT, site.directory);
-  const config = parseJsonc(await readFile(path.join(root, "wrangler.jsonc"), "utf8"));
+  const config = parseJsonc(
+    await readFile(path.join(root, site.configFile ?? "wrangler.jsonc"), "utf8"),
+  );
   assertConfig(siteName, config, site.expectedConfig);
 
   for (const relativePath of site.files) {
