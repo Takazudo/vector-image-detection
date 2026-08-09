@@ -1,7 +1,6 @@
 import type {
   BulkHumanTagMutationRequest,
   BulkHumanTagMutationResponse,
-  CreateUploadRequest,
   CreateUploadResponse,
   GetPhotoResponse,
   ListPhotosResponse,
@@ -13,8 +12,7 @@ import type {
 export interface PhotoLibraryClient {
   readiness(signal?: AbortSignal): Promise<ReadinessResponse>;
   listPhotos(signal?: AbortSignal): Promise<ListPhotosResponse>;
-  createUpload(request: CreateUploadRequest, signal?: AbortSignal): Promise<CreateUploadResponse>;
-  uploadFile(url: string, file: File, signal?: AbortSignal): Promise<void>;
+  uploadPhoto(file: File, signal?: AbortSignal): Promise<CreateUploadResponse>;
   uploadStatus(operationId: string, signal?: AbortSignal): Promise<UploadStatusResponse>;
   getPhoto(photoId: string, signal?: AbortSignal): Promise<GetPhotoResponse>;
   mutateTags(
@@ -62,28 +60,14 @@ async function apiRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
 export const browserPhotoLibraryClient: PhotoLibraryClient = {
   readiness: (signal) => apiRequest("/api/v1/readiness", { signal }),
   listPhotos: (signal) => apiRequest("/api/v1/photos?version=v1&limit=100", { signal }),
-  createUpload: (request, signal) =>
-    apiRequest("/api/v1/uploads", {
+  uploadPhoto: (file, signal) => {
+    const body = new FormData();
+    body.set("file", file, file.name);
+    return apiRequest("/api/v1/photos", {
       method: "POST",
       signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    }),
-  uploadFile: async (url, file, signal) => {
-    const response = await fetch(url, {
-      method: "PUT",
-      body: file,
-      signal,
-      headers: { "Content-Type": file.type },
+      body,
     });
-    if (!response.ok) {
-      throw new ApiClientError(
-        `Upload failed (${response.status})`,
-        "upload_failed",
-        true,
-        response.status,
-      );
-    }
   },
   uploadStatus: (operationId, signal) =>
     apiRequest(`/api/v1/uploads/${encodeURIComponent(operationId)}`, { signal }),
@@ -101,8 +85,3 @@ export const browserPhotoLibraryClient: PhotoLibraryClient = {
       signal,
     }),
 };
-
-export async function sha256Hex(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}

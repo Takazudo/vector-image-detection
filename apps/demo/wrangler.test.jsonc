@@ -12,4 +12,14 @@
     "ACK_REACTIVE_PURGE_ONLY": "false",
     "OPERATOR_PREFLIGHT_TOKEN": "worker-test-only",
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vector-image-detection-demo-test",
+      "database_id": "00000000-0000-0000-0000-000000000003",
+      "migrations_dir": "./migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "vector-image-detection-demo-test" }],
+  "assets": { "binding": "ASSETS", "directory": "./fixtures/bundle" },
 }

@@ -1,6 +1,16 @@
 import { dispatchQueueMessage, photoQueueMessageSchema } from "./contracts/queue";
-import { featureQueueHandlers } from "./feature-queue-handlers";
 import { featureRoutes } from "./feature-routes";
+import { tombstoneExpiredPhotos } from "./features/maintenance/purge";
+import {
+  cleanupStaleVectors,
+  drainOutbox,
+  recoverExpiredLeases,
+  repairExpiredUploads,
+} from "./features/maintenance/repair";
+import { createPhotoQueueHandlers } from "./features/processing/handlers";
+import { createEnrichmentProviders } from "./features/processing/providers";
+import { createTagSearchQueueHandlers } from "./features/tag-search";
+import { createPlatformProviders } from "./providers";
 import { apiError, routeRequest } from "./router";
 
 export default {
@@ -22,6 +32,14 @@ export default {
     }
   },
   async queue(batch, env) {
+    // Bindings are event-scoped. Construct adapters here rather than retaining
+    // request state at module scope, and let the tags feature replace only the
+    // reindex handler supplied by the photos feature.
+    const providers = createPlatformProviders(env);
+    const queueHandlers = {
+      ...createPhotoQueueHandlers(providers),
+      ...createTagSearchQueueHandlers(providers),
+    };
     for (const queued of batch.messages) {
       const parsed = photoQueueMessageSchema.safeParse(queued.body);
       if (!parsed.success) {
@@ -49,7 +67,7 @@ export default {
       }
 
       try {
-        await dispatchQueueMessage(parsed.data, featureQueueHandlers);
+        await dispatchQueueMessage(parsed.data, queueHandlers);
         queued.ack();
       } catch (error) {
         console.error(
@@ -65,8 +83,25 @@ export default {
       }
     }
   },
-  scheduled(_controller, _env, _ctx) {
-    // The repair feature installs its outbox/lease/retention scan here. Keeping
-    // the event seam now prevents request handlers from owning repair loops.
+  async scheduled(_controller, env, _ctx) {
+    const providers = createPlatformProviders(env);
+    const enrichment = createEnrichmentProviders(providers);
+    const repairs = await Promise.allSettled([
+      drainOutbox(providers),
+      repairExpiredUploads(providers),
+      recoverExpiredLeases(providers),
+      cleanupStaleVectors(providers, enrichment),
+      tombstoneExpiredPhotos(providers),
+    ]);
+    for (const result of repairs) {
+      if (result.status === "rejected") {
+        console.error(
+          JSON.stringify({
+            message: "scheduled photo-library repair failed",
+            error: result.reason instanceof Error ? result.reason.message : "unknown error",
+          }),
+        );
+      }
+    }
   },
 } satisfies ExportedHandler<Env, unknown>;

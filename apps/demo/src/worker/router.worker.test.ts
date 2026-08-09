@@ -13,4 +13,12 @@ describe("Worker routing", () => {
       service: "vector-image-detection-demo",
     });
   });
+
+  it("registers photo and tag/search route collections in the hosted registry", async () => {
+    const response = await exports.default.fetch("https://example.test/api/v1/search?query=cat");
+
+    // A missing search binding may fail at execution, but a registered route
+    // must never regress to the central router's generic 404 response.
+    expect(response.status).not.toBe(404);
+  });
 });

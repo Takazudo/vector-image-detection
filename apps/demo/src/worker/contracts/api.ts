@@ -4,8 +4,8 @@ import type {
   IsoTimestamp,
   PhotoDetail,
   PhotoId,
+  PhotoState,
   PhotoSummary,
-  SourceAttribution,
   SupportedImageMimeType,
   UploadOperationId,
   UploadOperationState,
@@ -47,26 +47,21 @@ export interface GetPhotoResponse extends VersionedDto {
   photo: PhotoDetail;
 }
 
-export interface CreateUploadRequest extends VersionedDto {
-  filename: string;
-  declaredMimeType: SupportedImageMimeType;
-  byteSize: number;
-  sha256: string;
-  attribution?: SourceAttribution;
-}
-
+/** Result from the multipart `POST /photos` endpoint. */
 export interface CreateUploadResponse extends VersionedDto {
   operationId: UploadOperationId;
   photoId: PhotoId;
-  state: Extract<UploadOperationState, "pending">;
-  uploadUrl: string;
-  expiresAt: IsoTimestamp;
+  state: UploadOperationState;
+  retryable: boolean;
+  errorCode: string | null;
+  updatedAt: IsoTimestamp;
 }
 
 export interface UploadStatusResponse extends VersionedDto {
   operationId: UploadOperationId;
   photoId: PhotoId | null;
   state: UploadOperationState;
+  photoState: PhotoState | null;
   retryable: boolean;
   errorCode: string | null;
   updatedAt: IsoTimestamp;
@@ -195,7 +190,6 @@ export const API_ROUTES = {
   operatorReadiness: "/api/v1/operator/readiness",
   photos: "/api/v1/photos",
   photo: "/api/v1/photos/:photoId",
-  uploads: "/api/v1/uploads",
   upload: "/api/v1/uploads/:operationId",
   media: "/api/v1/photos/:photoId/media",
   aiWords: "/api/v1/photos/:photoId/ai-words",

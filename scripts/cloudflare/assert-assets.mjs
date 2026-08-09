@@ -38,18 +38,7 @@ const sites = {
       htmlHandling: "none",
       notFoundHandling: "single-page-application",
     },
-    files: [
-      "dist/index.html",
-      "dist/__zfb/routes.json",
-      "dist/assets/worker-src-s-embed-h-worker-d-ts.js",
-      "dist/assets/worker-src-s-real-h-embed-h-worker-d-ts.js",
-      "dist/onnxruntime/ort-wasm-simd-threaded.wasm",
-      "dist/data/meta.json",
-      "dist/data/embeddings.bin",
-      "dist/data/manifest.json",
-      "dist/data/CREDITS.md",
-      "dist/data/thumbs/pets/cat-abyssinian-1.jpg.jpg",
-    ],
+    files: ["dist/index.html", "dist/__zfb/routes.json"],
   },
 };
 

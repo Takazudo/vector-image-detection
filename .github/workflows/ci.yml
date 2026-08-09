@@ -54,11 +54,23 @@ jobs:
       - name: Apply D1 migration locally
         run: pnpm run cloudflare:migrate:local
 
+      - name: Verify local credited seed import and idempotent rerun
+        run: pnpm run demo:seed:local
+
       - name: Check generated docs
         run: pnpm --filter @vector-image-detection/docs run check
 
       - name: Test
         run: pnpm test
+
+      - name: Verify hosted production output
+        run: pnpm run test:output
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @vector-image-detection/demo exec playwright install --with-deps chromium
+
+      - name: Exercise production browser flows
+        run: pnpm run test:e2e
 
       - name: Assert deployable static assets
         run: pnpm run cloudflare:assets

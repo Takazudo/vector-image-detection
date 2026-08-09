@@ -13,6 +13,7 @@ export default defineConfig({
       "scripts/**",
       "apps/demo/src/**/*.worker.test.ts",
       "apps/demo/src/**/*.dom.test.{ts,tsx}",
+      "apps/demo/e2e/**",
     ],
   },
 });
