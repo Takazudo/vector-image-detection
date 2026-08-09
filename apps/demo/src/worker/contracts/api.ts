@@ -184,10 +184,19 @@ export interface ReadinessResponse {
   checks: ReadinessCheck[];
 }
 
+export interface OperatorPurgeResponse {
+  version: "v1";
+  operationId: string;
+  photoId: PhotoId;
+  tombstoneRevision: number;
+  state: "pending";
+}
+
 export const API_ROUTES = {
   health: "/api/v1/health",
   readiness: "/api/v1/readiness",
   operatorReadiness: "/api/v1/operator/readiness",
+  operatorPurge: "/api/v1/operator/photos/:photoId/purge",
   photos: "/api/v1/photos",
   photo: "/api/v1/photos/:photoId",
   upload: "/api/v1/uploads/:operationId",

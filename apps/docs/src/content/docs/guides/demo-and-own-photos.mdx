@@ -35,7 +35,7 @@ internal importer は同じ byte validation、durable upload operation、private
 ## 日常運用と障害対応
 
 - **誤用/緊急事態:** `PUBLIC_WRITES_ENABLED` を false にして deploy し、新規 anonymous write を止めます。既存の ready media/search は別の明示的な公開停止を行わない限り読めることに注意します。
-- **不適切/削除要求:** 公開 admin endpoint を作らず、運用者 purge を実行します。reactive-only であり、自動検出・審査・通報ではありません。
+- **不適切/削除要求:** 公開または browser admin UI は作らず、認証済み運用者 purge を実行します。`DEMO_PURGE_URL`、secret `DEMO_PURGE_TOKEN`（deploy 済み Worker の `OPERATOR_PREFLIGHT_TOKEN` と同じ値）、`DEMO_PURGE_PHOTO_ID`、non-empty `DEMO_PURGE_REASON` を shell/secret manager から渡して `pnpm run cloudflare:demo-purge` を実行します。HTTPS の operator endpoint が durable tombstone/outbox を `202` で受理した後、Queue/repair が R2、全 vector generation、D1 relations を削除し、terminal tombstone diagnostics を保持します。reactive-only であり、自動検出・審査・通報ではありません。
 - **pending / enqueue_failed:** outbox drain と upload-operation/R2 repair が durable record から再送・cleanup します。
 - **processing retryable / DLQ:** lease expiry、attempt/backoff、DLQ diagnostics を見て原因を直し、repair を再実行します。terminal error は無条件に公開しません。
 - **検索が古い/related だけ失敗:** D1 exact tiers は正本なので残ります。required revision、canonical revision、`photoId:revision`、stale generation cleanup を確認します。

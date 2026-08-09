@@ -140,6 +140,7 @@ export async function purgePhoto(
       .prepare("UPDATE tombstones SET vectors_deleted_at = ?, updated_at = ? WHERE photo_id = ?")
       .bind(timestamp, timestamp, message.photoId)
       .run();
+    const completedAt = providers.clock.now().toISOString();
     await providers.database.batch([
       providers.database
         .prepare("DELETE FROM photos WHERE id = ? AND state = 'tombstoned'")
@@ -153,7 +154,13 @@ export async function purgePhoto(
          WHERE scope = 'global_stored_photo' AND subject_key = 'all'
          AND window_start = '1970-01-01T00:00:00.000Z'`,
         )
-        .bind(timestamp),
+        .bind(completedAt),
+      providers.database
+        .prepare(
+          `UPDATE tombstones SET purge_state = 'complete', database_purged_at = ?,
+         last_error = NULL, updated_at = ? WHERE photo_id = ?`,
+        )
+        .bind(completedAt, completedAt, message.photoId),
     ]);
   } catch (error) {
     await providers.database

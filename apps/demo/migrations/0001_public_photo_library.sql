@@ -247,7 +247,7 @@ CREATE TABLE quota_counters (
 ) STRICT;
 
 CREATE TABLE tombstones (
-  photo_id TEXT PRIMARY KEY REFERENCES photos(id) ON DELETE CASCADE,
+  photo_id TEXT PRIMARY KEY,
   tombstone_revision INTEGER NOT NULL CHECK (tombstone_revision >= 1),
   reason TEXT NOT NULL,
   requested_by TEXT NOT NULL,

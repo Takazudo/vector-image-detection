@@ -464,9 +464,12 @@ async function hydrateSummary(database: D1Database, row: PhotoRow): Promise<Phot
     .prepare(
       `SELECT word, normalized_word AS normalizedWord, confidence, model_run_id AS modelRunId,
        document_revision AS documentRevision FROM photo_ai_words
-       WHERE photo_id = ? AND document_revision = ? ORDER BY position`,
+       WHERE photo_id = ? AND document_revision = (
+         SELECT MAX(latest.document_revision) FROM photo_ai_words latest
+         WHERE latest.photo_id = ? AND latest.document_revision <= ?
+       ) ORDER BY position`,
     )
-    .bind(row.id, row.document_revision)
+    .bind(row.id, row.id, row.document_revision)
     .all<{
       word: string;
       normalizedWord: string;

@@ -38,7 +38,13 @@ const photo = {
       createdAt: "2026-08-10T00:00:02.000Z",
     },
   ],
-  attribution: null,
+  attribution: {
+    sourceUrl: "https://example.test/source/photo-1",
+    licenseName: "CC BY 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    authorName: "Example Author",
+    authorUrl: null,
+  },
 };
 
 test.beforeEach(async ({ page }) => {
@@ -46,6 +52,7 @@ test.beforeEach(async ({ page }) => {
   const pageErrors: string[] = [];
   const failedRequests: string[] = [];
   diagnostics.set(page, { consoleErrors, pageErrors, failedRequests });
+  let humanTags = [...photo.humanTags];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
@@ -106,9 +113,34 @@ test.beforeEach(async ({ page }) => {
       });
     }
     if (pathname === "/api/v1/human-tags/bulk") {
+      const payload = request.postDataJSON() as {
+        action: "attach" | "remove";
+        humanTagNames: string[];
+      };
+      const name = payload.humanTagNames[0] ?? "";
+      humanTags =
+        payload.action === "attach"
+          ? [
+              ...humanTags.filter((tag) => tag.normalizedName !== name.toLowerCase()),
+              {
+                kind: "human-tag",
+                id: `tag-${name}`,
+                name,
+                normalizedName: name.toLowerCase(),
+                createdAt: "2026-08-10T00:00:03.000Z",
+              },
+            ]
+          : humanTags.filter((tag) => tag.normalizedName !== name.toLowerCase());
       return json({
         version: "v1",
-        results: [{ photoId: "photo-1", status: "updated", documentRevision: 2, humanTags: [] }],
+        results: [
+          {
+            photoId: "photo-1",
+            status: "updated",
+            documentRevision: 2,
+            humanTags,
+          },
+        ],
       });
     }
     if (pathname === "/api/v1/search") {
@@ -152,6 +184,14 @@ test("uploads through the multipart API and presents distinct provenance and sea
 }) => {
   await expect(page.getByLabel("AI suggested words")).toContainText("AI · Cat");
   await expect(page.getByLabel("Human tags")).toContainText("Human · favorite");
+  await expect(page.getByRole("link", { name: "Example Author" })).toHaveAttribute(
+    "href",
+    "https://example.test/source/photo-1",
+  );
+  await expect(page.getByRole("link", { name: "CC BY 4.0" })).toHaveAttribute(
+    "href",
+    "https://creativecommons.org/licenses/by/4.0/",
+  );
   await page.getByLabel("Choose photos").setInputFiles({
     name: "cat.jpg",
     mimeType: "image/jpeg",
@@ -161,10 +201,24 @@ test("uploads through the multipart API and presents distinct provenance and sea
 
   await page.getByLabel("Words or description").fill("cat");
   await page.getByRole("button", { name: "Search" }).click();
-  await expect(page.getByRole("heading", { name: "Human tag" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "AI word" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Related" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Human tag", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AI word", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Related", exact: true })).toBeVisible();
   await expect(page.getByText(/Related results are incomplete/)).toBeVisible();
+});
+
+test("bulk-attaches and removes only human tags from selected photos", async ({ page }) => {
+  await expect(page.getByLabel("AI suggested words").getByRole("button")).toHaveCount(0);
+  await page.getByLabel("Select photo photo-1").check();
+  await expect(page.getByText("1 selected")).toBeVisible();
+  await page.getByLabel("Human tag", { exact: true }).fill("reviewed");
+  await page.getByRole("button", { name: "Attach human tag" }).click();
+  await expect(page.getByLabel("Human tags")).toContainText("Human · reviewed");
+  await expect(page.getByLabel("AI suggested words")).toContainText("AI · Cat");
+
+  await page.getByRole("button", { name: "Remove human tag", exact: true }).click();
+  await expect(page.getByLabel("Human tags")).not.toContainText("Human · reviewed");
+  await expect(page.getByLabel("Human tags")).toContainText("Human · favorite");
 });
 
 test("keeps the responsive library within its viewport", async ({ page }) => {
@@ -178,6 +232,7 @@ test("keeps the responsive library within its viewport", async ({ page }) => {
         } | null;
       };
       innerWidth: number;
+      getComputedStyle(element: object): { objectFit: string };
     };
     const searchButton = browser.document.querySelector('button[type="submit"]');
     const image = browser.document.querySelector("img");
@@ -188,6 +243,10 @@ test("keeps the responsive library within its viewport", async ({ page }) => {
       searchTargetHeight: searchButton?.getBoundingClientRect().height ?? 0,
       imageWidth: image?.getAttribute("width"),
       imageHeight: image?.getAttribute("height"),
+      imageObjectFit: image ? browser.getComputedStyle(image).objectFit : "",
+      gridLayout: browser.document
+        .querySelector('[data-layout="bounded-responsive-grid"]')
+        ?.getAttribute("data-layout"),
     };
   });
   expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth);
@@ -196,6 +255,8 @@ test("keeps the responsive library within its viewport", async ({ page }) => {
   expect(metrics.searchTargetHeight).toBeGreaterThanOrEqual(44);
   expect(metrics.imageWidth).toBe("1200");
   expect(metrics.imageHeight).toBe("800");
+  expect(metrics.imageObjectFit).toBe("cover");
+  expect(metrics.gridLayout).toBe("bounded-responsive-grid");
   await page.getByRole("button", { name: "Search" }).focus();
   await expect(page.getByRole("button", { name: "Search" })).toHaveCSS("outline-style", "solid");
 });
@@ -224,4 +285,10 @@ test("keeps search usable while displaying server/readiness failure states", asy
   await expect(page.getByText(/Could not load the library/)).toBeVisible();
   await expect(page.getByLabel("Choose photos")).toBeDisabled();
   await expect(page.getByRole("button", { name: "Search" })).toBeEnabled();
+  const current = diagnostics.get(page);
+  expect(current?.consoleErrors).toEqual([
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+  ]);
+  current?.consoleErrors.splice(0);
 });

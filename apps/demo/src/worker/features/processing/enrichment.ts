@@ -255,8 +255,10 @@ async function loadPhoto(
 
 export function parseVisionOutput(value: unknown): { caption: string; words: string[] } {
   let candidate = value;
-  if (typeof candidate === "object" && candidate !== null && "description" in candidate) {
-    candidate = (candidate as { description: unknown }).description;
+  if (typeof candidate === "object" && candidate !== null) {
+    if ("answer" in candidate) candidate = (candidate as { answer: unknown }).answer;
+    else if ("description" in candidate)
+      candidate = (candidate as { description: unknown }).description;
   }
   if (typeof candidate === "string") {
     if (new TextEncoder().encode(candidate).byteLength > VALIDATION_LIMITS.maximumAiOutputBytes) {

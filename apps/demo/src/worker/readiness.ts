@@ -39,8 +39,8 @@ export function configurationReadiness(providers: PlatformProviders): ReadinessR
       "operator_acknowledgements",
       !settings.publicWritesEnabled || acknowledgements,
       settings.publicWritesEnabled
-        ? "All public-demo risk acknowledgements are explicit."
-        : "Public writes are disabled; acknowledgements are not yet required.",
+        ? "Anonymous public writes, retained original image metadata, and reactive-purge-only moderation are explicitly acknowledged."
+        : "Public writes are disabled; anonymous writes, retained original image metadata, and reactive-purge-only moderation are not yet acknowledged.",
     ),
   ];
 
@@ -132,8 +132,8 @@ export async function deepReadiness(providers: PlatformProviders): Promise<Readi
       "operator_acknowledgements",
       settings.publicWritesEnabled && acknowledgements,
       settings.publicWritesEnabled && acknowledgements
-        ? "Public writes and all three risk acknowledgements are explicit."
-        : "Production release requires public writes plus all three explicit risk acknowledgements.",
+        ? "Public writes plus anonymous-write, retained-metadata, and reactive-purge-only acknowledgements are explicit."
+        : "Production release requires public writes plus explicit anonymous-write, retained-metadata, and reactive-purge-only acknowledgements.",
     ),
   );
 

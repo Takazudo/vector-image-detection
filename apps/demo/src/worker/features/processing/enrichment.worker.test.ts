@@ -7,7 +7,8 @@ import {
   parseVisionOutput,
   ProcessingError,
 } from "./enrichment";
-import { FakeEnrichmentProviders } from "./providers";
+import type { PlatformProviders } from "../../providers";
+import { createEnrichmentProviders, FakeEnrichmentProviders } from "./providers";
 
 describe("untrusted enrichment output", () => {
   it("normalizes and bounds words while preserving a concise caption", () => {
@@ -16,6 +17,13 @@ describe("untrusted enrichment output", () => {
         description: '```json\n{"caption":" A  cat ","words":["Cat"," cat ",42,"Pet"]}\n```',
       }),
     ).toEqual({ caption: "A cat", words: ["cat", "pet"] });
+  });
+
+  it("parses the documented non-streaming Moondream answer shape", () => {
+    expect(parseVisionOutput({ answer: '{"caption":"A cat","words":["cat","pet"]}' })).toEqual({
+      caption: "A cat",
+      words: ["cat", "pet"],
+    });
   });
 
   it("rejects malformed output and no usable suggested words", () => {
@@ -43,5 +51,31 @@ describe("untrusted enrichment output", () => {
     expect(fake.vectors.has("photo:1")).toBe(true);
     await fake.deleteVectors(["photo:1"]);
     expect(fake.vectors.has("photo:1")).toBe(false);
+  });
+
+  it("sends Moondream a non-streaming query with a base64 image data URI", async () => {
+    let input: unknown;
+    const platform = {
+      ai: {
+        run: async (_model: string, value: unknown) => {
+          input = value;
+          return { answer: '{"caption":"A test image","words":["test"]}' };
+        },
+      },
+    } as unknown as PlatformProviders;
+    const providers = createEnrichmentProviders(platform);
+    await providers.describe(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      "Return JSON",
+    );
+    expect(input).toMatchObject({
+      task: "query",
+      image: "data:image/png;base64,iVBORw0KGgo=",
+      question: "Return JSON",
+      reasoning: false,
+      max_tokens: 512,
+      temperature: 0,
+      stream: false,
+    });
   });
 });

@@ -1,4 +1,5 @@
-import type { ApiErrorResponse, HealthResponse } from "./contracts/api";
+import type { ApiErrorResponse, HealthResponse, OperatorPurgeResponse } from "./contracts/api";
+import { requestOperatorPurge } from "./features/maintenance/purge";
 import { createPlatformProviders, type PlatformProviders } from "./providers";
 import { configurationReadiness, deepReadiness } from "./readiness";
 
@@ -62,6 +63,92 @@ export async function routeRequest(
     }
     const body = await deepReadiness(providers);
     return json(body, body.status === "ready" ? 200 : 503);
+  }
+  const purgeMatch = new URLPattern({ pathname: "/api/v1/operator/photos/:photoId/purge" }).exec(
+    request.url,
+  );
+  if (request.method === "POST" && purgeMatch) {
+    if (!(await authorizedOperatorRequest(request, env.OPERATOR_PREFLIGHT_TOKEN))) {
+      return apiError(
+        providers.ids.generate(),
+        401,
+        "unauthorized",
+        "Operator authorization required.",
+      );
+    }
+    const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
+    if (contentType !== "application/json") {
+      return apiError(
+        providers.ids.generate(),
+        415,
+        "unsupported_media_type",
+        "Operator purge requires application/json.",
+      );
+    }
+    const declaredLength = Number(request.headers.get("content-length") ?? 0);
+    if (Number.isFinite(declaredLength) && declaredLength > 4_096) {
+      return apiError(
+        providers.ids.generate(),
+        413,
+        "body_too_large",
+        "Request body is too large.",
+      );
+    }
+    let payload: unknown;
+    try {
+      const body = await request.text();
+      if (new TextEncoder().encode(body).byteLength > 4_096) {
+        return apiError(
+          providers.ids.generate(),
+          413,
+          "body_too_large",
+          "Request body is too large.",
+        );
+      }
+      payload = JSON.parse(body);
+    } catch {
+      return apiError(providers.ids.generate(), 400, "invalid_json", "Request body is invalid.");
+    }
+    const reason =
+      typeof payload === "object" &&
+      payload !== null &&
+      "reason" in payload &&
+      typeof payload.reason === "string"
+        ? payload.reason.trim()
+        : "";
+    if (reason.length < 1 || reason.length > 1_000) {
+      return apiError(
+        providers.ids.generate(),
+        400,
+        "invalid_reason",
+        "Purge reason must contain 1 to 1000 characters.",
+      );
+    }
+    const photoId = purgeMatch.pathname.groups.photoId;
+    if (!photoId) {
+      return apiError(providers.ids.generate(), 404, "not_found", "Photo not found.");
+    }
+    try {
+      const message = await requestOperatorPurge(providers, photoId, "operator-api", reason);
+      const response: OperatorPurgeResponse = {
+        version: "v1",
+        operationId: message.operationId,
+        photoId: message.photoId,
+        tombstoneRevision: message.tombstoneRevision,
+        state: "pending",
+      };
+      return json(response, 202);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Photo not found or already tombstoned.") {
+        return apiError(
+          providers.ids.generate(),
+          404,
+          "not_found",
+          "Photo not found or already scheduled for purge.",
+        );
+      }
+      throw error;
+    }
   }
 
   for (const route of featureRoutes) {

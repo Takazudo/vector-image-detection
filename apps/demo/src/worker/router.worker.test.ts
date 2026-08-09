@@ -21,4 +21,16 @@ describe("Worker routing", () => {
     // must never regress to the central router's generic 404 response.
     expect(response.status).not.toBe(404);
   });
+
+  it("keeps the operator purge route bearer protected", async () => {
+    const response = await exports.default.fetch(
+      new Request("https://example.test/api/v1/operator/photos/photo-1/purge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason: "operator request" }),
+      }),
+    );
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "unauthorized" } });
+  });
 });

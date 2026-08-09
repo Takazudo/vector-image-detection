@@ -16,10 +16,13 @@ export function createEnrichmentProviders(platform: PlatformProviders): Enrichme
   return {
     describe: async (image, prompt) =>
       platform.ai.run(MODEL_CONFIG.vision, {
-        image: [...image],
-        prompt,
+        task: "query",
+        image: imageDataUri(image),
+        question: prompt,
+        reasoning: false,
         max_tokens: 512,
         temperature: 0,
+        stream: false,
       }),
     embed: async (document) => platform.ai.run(MODEL_CONFIG.embedding, { text: [document] }),
     upsertVector: async (id, values, metadata) => {
@@ -29,6 +32,43 @@ export function createEnrichmentProviders(platform: PlatformProviders): Enrichme
       if (ids.length > 0) await platform.vectorize.deleteByIds(ids);
     },
   };
+}
+
+function imageDataUri(image: Uint8Array): string {
+  const mimeType = detectImageMimeType(image);
+  const chunks: string[] = [];
+  const chunkSize = 24_576;
+  for (let offset = 0; offset < image.length; offset += chunkSize) {
+    chunks.push(String.fromCharCode(...image.subarray(offset, offset + chunkSize)));
+  }
+  return `data:${mimeType};base64,${btoa(chunks.join(""))}`;
+}
+
+function detectImageMimeType(image: Uint8Array): "image/jpeg" | "image/png" | "image/webp" {
+  if (image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff) return "image/jpeg";
+  if (
+    image[0] === 0x89 &&
+    image[1] === 0x50 &&
+    image[2] === 0x4e &&
+    image[3] === 0x47 &&
+    image[4] === 0x0d &&
+    image[5] === 0x0a &&
+    image[6] === 0x1a &&
+    image[7] === 0x0a
+  )
+    return "image/png";
+  if (
+    image[0] === 0x52 &&
+    image[1] === 0x49 &&
+    image[2] === 0x46 &&
+    image[3] === 0x46 &&
+    image[8] === 0x57 &&
+    image[9] === 0x45 &&
+    image[10] === 0x42 &&
+    image[11] === 0x50
+  )
+    return "image/webp";
+  throw new Error("Validated image bytes did not contain a supported image signature.");
 }
 
 export class FakeEnrichmentProviders implements EnrichmentProviders {

@@ -8,6 +8,8 @@ When writes are enabled, uploads and human-tag edits are anonymous. The Worker a
 
 Originals stay in private R2 and are served through the Worker only when the photo is ready. They are not re-encoded; image metadata may remain exposed. There is no automated moderation, review queue, or reporting workflow. Operators can emergency-disable writes and issue a reactive purge, which safely retries until R2 objects, every Vectorize generation, and D1 records are removed.
 
+The purge entry point is operator-only; there is no public or browser admin control. Set `DEMO_PURGE_URL`, secret `DEMO_PURGE_TOKEN` (the deployed `OPERATOR_PREFLIGHT_TOKEN`), `DEMO_PURGE_PHOTO_ID`, and a non-empty `DEMO_PURGE_REASON`, then run `pnpm run cloudflare:demo-purge`. The command requires HTTPS and returns only after the durable tombstone/outbox operation is accepted; Queue repair completes deletion and retains terminal tombstone diagnostics.
+
 ## Data flow and search
 
 ```mermaid

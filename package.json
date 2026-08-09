@@ -26,6 +26,7 @@
     "cloudflare:dry-run": "pnpm --filter @vector-image-detection/docs exec wrangler deploy --dry-run && pnpm --filter @vector-image-detection/demo run deploy:dry-run && pnpm --filter @vector-image-detection/demo run deploy:dry-run:production",
     "cloudflare:migrate:local": "pnpm --filter @vector-image-detection/demo run db:migrate:local",
     "cloudflare:demo-preflight": "node scripts/cloudflare/demo-preflight.mjs",
+    "cloudflare:demo-purge": "node scripts/cloudflare/demo-purge.mjs",
     "cloudflare:preflight": "node scripts/cloudflare/preflight.mjs",
     "cloudflare:check": "pnpm build && pnpm typecheck && pnpm --filter @vector-image-detection/docs run check && pnpm test && pnpm run cloudflare:assets && pnpm run cloudflare:dry-run",
     "vis": "node packages/cli/dist/bin.js"

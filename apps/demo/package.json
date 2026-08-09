@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "zfb dev",
     "typecheck": "pnpm run worker:types:check && tsc -b && zfb check",
+    "prebuild": "node scripts/clean-output.mjs",
     "build": "tsc -b && zfb build",
     "preview": "zfb preview",
     "predeploy": "node scripts/render-production-config.mjs",
