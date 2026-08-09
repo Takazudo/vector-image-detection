@@ -1,36 +1,40 @@
 ---
-title: 開発、検証、資料
-description: ローカル品質確認と、設計根拠をたどるための一次資料
+title: 開発・検証・資料
+description: deterministic checks、deferred live verification、帰属資料
 sidebar_position: 3
 ---
 
-## 開発チェック
-
-```sh
-pnpm install
-pnpm build
-pnpm typecheck
-pnpm test
-pnpm format
-```
-
-通常のテストはオフラインで実行できます。実モデルのテストは `RUN_MODEL_TESTS=1`、実際の VLM 呼び出しを行う live test は `RUN_VLM_LIVE=1` と API キーが必要です。VLM の live test は費用と外部送信を伴うため、意図して実行してください。
-
-ドキュメントだけを確認するには次を使います。
+## Release/preflight 向けの focused checks
 
 ```sh
 pnpm --filter @vector-image-detection/docs run check
 pnpm --filter @vector-image-detection/docs run build
+node --test scripts/cloudflare/demo-preflight.node-test.mjs
+pnpm --filter @vector-image-detection/demo run db:migrate:local
+pnpm --filter @vector-image-detection/demo run deploy:dry-run:production
 ```
 
-## 資料と帰属
+preflight tests は acknowledgement、production environment、public writes、pinned models、すべての required binding check を検証します。docs build/check はナビゲーションと MDX を検証します。dry-run は placeholder/構文を検証します。これらは live provider smoke test ではありません。
 
-- [リポジトリ](https://github.com/Takazudo/vector-image-detection)
-- [README: クイックスタート、実装の全体像、production mapping](https://github.com/Takazudo/vector-image-detection/blob/main/README.md)
-- [研究ノート: モデル、ベンチマーク、日本語、先行事例](https://github.com/Takazudo/vector-image-detection/blob/main/docs/research.md)
-- [E2E 確認記録: 実モデルとサンプルデータでの結果](https://github.com/Takazudo/vector-image-detection/blob/main/docs/e2e-confirm-report.md)
-- [VLM tagger README: API、費用、失敗時の挙動](https://github.com/Takazudo/vector-image-detection/blob/main/packages/vlm-tagger/README.md)
-- [Classmethod の production case study](https://dev.classmethod.jp/articles/search-dance-movie-with-vertexai-and-qdrant/)
-- [transformers.js のドキュメント](https://huggingface.co/docs/transformers.js)
+## Deferred live verification
 
-サンプル画像の出典・ライセンス・作者情報は取得時の manifest から index bundle に引き継がれ、デモでも表示できます。再配布や本番利用では、個々の素材の利用条件を確認してください。
+resources を provision した後に、最小権限 token と production target を使って実行・記録します。
+
+- `/api/v1/operator/readiness` の D1 migration/model metadata、private R2、Queue/DLQ、Workers AI binding、Vectorize 768/cosine、rate limit、acknowledgement。
+- 一つの upload が R2 → D1/outbox → Queue → AI → generation-stamped vector → ready まで進むこと。
+- exact human、exact AI、related と、AI/Vectorize 障害時の exact-only warning。
+- retention/purge が R2、全 vector generation、D1 を retryably 削除すること。
+
+provisioning 前はこれらを pass と宣言しません。
+
+## 資料と attribution
+
+- [Repository](https://github.com/Takazudo/vector-image-detection)
+- [Fixture credits](https://github.com/Takazudo/vector-image-detection/blob/main/apps/demo/fixtures/bundle/CREDITS.md)
+- [Fixture manifest](https://github.com/Takazudo/vector-image-detection/blob/main/apps/demo/fixtures/bundle/manifest.json)
+- [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
+- [Cloudflare D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
+- [Cloudflare Queues DLQ](https://developers.cloudflare.com/queues/configuration/dead-letter-queues/)
+- [Cloudflare Vectorize](https://developers.cloudflare.com/vectorize/get-started/intro/)
+
+100 seed thumbnail の source/license/author は fixture manifest と credits に保存されます。再配布・本番公開前に個別 license と attribution の表示要件を確認してください。

@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vector-image-detection-demo-test",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_ENV": "ci",
+    "PUBLIC_WRITES_ENABLED": "false",
+    "ACK_ANONYMOUS_PUBLIC_WRITES": "false",
+    "ACK_RETAINED_IMAGE_METADATA": "false",
+    "ACK_REACTIVE_PURGE_ONLY": "false",
+    "OPERATOR_PREFLIGHT_TOKEN": "worker-test-only",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vector-image-detection-demo-test",
+      "database_id": "00000000-0000-0000-0000-000000000003",
+      "migrations_dir": "./migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "vector-image-detection-demo-test" }],
+  "assets": { "binding": "ASSETS", "directory": "./fixtures/bundle" },
+}

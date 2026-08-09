@@ -22,5 +22,12 @@
   },
   // Node-side files: zfb config plus the fixture bundle's acceptance test,
   // which reads the committed bundle off disk rather than over HTTP.
-  "include": ["zfb.config.ts", "fixtures/**/*.ts"]
+  "include": [
+    "zfb.config.ts",
+    "playwright.config.ts",
+    "vitest.*.config.ts",
+    "fixtures/**/*.ts",
+    "tests/**/*.ts",
+    "e2e/**/*.ts"
+  ]
 }
