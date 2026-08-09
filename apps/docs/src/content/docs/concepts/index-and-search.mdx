@@ -1,27 +1,33 @@
 ---
-title: インデックスと検索
-description: index bundle、モデル互換性、ブラウザーの検索経路
+title: 処理・検索の設計
+description: D1 を正本にした outbox、AI provenance、generation-stamped Vectorize
 sidebar_position: 2
 ---
 
-## 取り込みで作られるもの
+## 処理経路
 
-`vis ingest <dir>` は `jpg`、`png`、`webp` を走査し、画像を埋め込み、サムネイルを生成します。`data/indexes/<name>/` の index bundle は次の 3 要素です。
+```mermaid
+flowchart TD
+  U[upload] --> O[D1: durable upload operation + pending photo]
+  O --> R[private R2 write]
+  R --> X[D1 transaction: revision + outbox]
+  X --> Q[Queue, at-least-once]
+  X -. unsent / lease expiry .-> S[scheduled repair]
+  S --> Q
+  Q --> A[Workers AI vision: English caption + bounded AI words]
+  A --> T[D1: AI provenance; build text document]
+  T --> E[Workers AI text embedding]
+  E --> V[Vectorize: photoId:documentRevision]
+  V --> C[D1: record canonical indexed revision]
+  C --> Ready[ready]
+```
 
-- `meta.json`: `modelId`、`dim`、作成時刻と、写真ごとの ID・元ファイル相対パス・サムネイル・確定タグ・利用許諾/出典/作者情報
-- `embeddings.bin`: ベクトルを行方向に連結した little-endian `Float32` データ
-- `thumbs/`: 表示用サムネイル
+R2 成功後に outbox を作る D1 transaction が失敗しても、先に durable upload operation があるため orphan を追跡・修復できます。Queue の send-before-mark 重複、期限切れ lease、DLQ、失敗した即時 cleanup は想定内です。repair は outbox drain、操作/R2 reconciliation、retryable job、stale generation、retention/tombstone purge を再実行します。
 
-この bundle がタグを含む正本です。Qdrant はそこから同期する派生コピーであり、逆方向に取り込みません。再取り込み時は同じ ID の確定タグを引き継ぎますが、既存 bundle が壊れている場合はタグを失う上書きを避けるため処理を停止します。
+## revision と index
 
-## モデルと次元はセットです
+caption/AI words/human tags の変更は document revision を進めます。`photoId:documentRevision` を新しく upsert し、同じ revision のときだけ D1 が canonical indexed revision を進めます。検索結果は必ず D1 で ready、非 tombstone、canonical generation を検査します。Vectorize metadata は catalog の正本ではありません。
 
-ベクトルはモデルごとに意味が異なります。`meta.json` の `modelId` と `dim` が一致しないベクトル・問い合わせベクトルを比較してはいけません。モデルを変えることは設定値を変えるだけではなく、**コレクション全体の再インデックス**を意味します。既定は `Xenova/siglip-base-patch16-224`、768 次元で、各ベクトルは L2 正規化されます。
+## 検索の意味
 
-## テキスト・画像・類似検索
-
-テキストは SigLIP の text tower、外部画像は vision tower、既存 item ID は保存済みベクトルを使います。いずれも同じ空間のベクトルとして `VectorStore.search` に渡し、上位 k 件をコサイン類似度で返します。既定の in-memory 実装は総当たりの正確な検索です。検証では 20,000 ベクトルで約 16 ms であり、この規模では ANN の利点は小さいとしています。
-
-## ブラウザーデモ
-
-デモはサーバーを持たず、bundle をブラウザーへ読み込みます。画像ベクトルはあらかじめあるため、初回のテキスト検索・分類・語彙スコア時だけ text tower（約 100 MB）を遅延取得します。推論は Web Worker で動き、ONNX Runtime の WASM もアプリから配信されるため、実行時に第三者 CDN へ問い合わせません。ギャラリー閲覧だけならモデルのダウンロードはありません。
+human exact → AI exact → related の順で、写真 ID は強い理由だけ残して重複排除します。related の埋め込み文書は英語 caption、AI words、human tags から作るため、raw visual similarity でも image-to-image search でもありません。サービス障害時は exact tier を返し、related warning を返します。

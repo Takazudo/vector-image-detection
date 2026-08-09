@@ -1,27 +1,23 @@
 ---
-title: CLI リファレンス
-description: vis の主要コマンドとインデックス指定
+title: Cloudflare コマンド
+description: local/remote を取り違えないための build、migration、dry-run、preflight
 sidebar_position: 2
 ---
 
-`pnpm build` の後、リポジトリのルートで `pnpm vis` を使います。全コマンドの `--index <name>` は既定で `default` であり、`data/indexes/<name>/` を指します。
+| 目的                       | 実行するコマンド                                                                                         | remote への作用        |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------- |
+| local D1 migration         | `pnpm --filter @vector-image-detection/demo run db:migrate:local`                                        | なし                   |
+| docs 構文/リンク           | `pnpm --filter @vector-image-detection/docs run check`                                                   | なし                   |
+| docs build                 | `pnpm --filter @vector-image-detection/docs run build`                                                   | なし                   |
+| placeholder deploy dry-run | `pnpm --filter @vector-image-detection/demo run deploy:dry-run:production`                               | なし                   |
+| remote D1 migration        | `pnpm exec wrangler d1 migrations apply <d1-name> --remote --config apps/demo/wrangler.production.jsonc` | 指定 D1 のみ           |
+| authenticated release gate | `pnpm run cloudflare:demo-preflight`                                                                     | readiness GET のみ     |
+| rendered demo deployment   | `pnpm --filter @vector-image-detection/demo run deploy`                                                  | 指定 production Worker |
 
-| コマンド                       | 内容                                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------------------- |
-| `vis ingest <dir>`             | `jpg`/`png`/`webp` を埋め込み、bundle を作成                                          |
-| `vis search <text>`            | テキストの上位近傍を表示。`-k`、`--backend memory\|qdrant`、`--qdrant-url` を指定可能 |
-| `vis similar <idOrPath>`       | 登録済み ID または外部画像パスの近傍を表示                                            |
-| `vis cluster`                  | 球面 k-means。`--k <n>`、`--auto`、`--json`                                           |
-| `vis tag vocab <words...>`     | 語彙とのゼロショット候補。`--threshold`、`--apply`                                    |
-| `vis tag propagate <id> <tag>` | 見本から近傍へタグを提案。`--threshold`、`--yes`                                      |
-| `vis tag vlm <ids...>`         | Claude API のタグ生成。`--language en\|ja`、`--confirm-upload` 必須                   |
-| `vis qdrant sync`              | index bundle を `vis-<index>` コレクションへ同期。`--url`                             |
-| `vis export-demo`              | bundle とサムネイルを `apps/demo/public/data/` へコピー                               |
+`--remote` を含む D1 command と明示した resource name は実 account に作用します。production name を shell history、issue、docs、source にハードコードしません。`wrangler vectorize create <name> --dimensions=768 --metric=cosine` の metric/dimension は作成後に変更できないため、モデルの 768-dimensional embedding と一致することを先に確認してください。
 
-```sh
-pnpm vis search --help
-pnpm vis tag vocab --help
-pnpm vis qdrant sync --help
-```
+`cloudflare:demo-preflight` は `DEMO_PREFLIGHT_URL`、`DEMO_PREFLIGHT_TOKEN`、3 acknowledgement variables を必要とします。ready response は configuration、D1、migrations、R2、Queue、DLQ、Workers AI、Vectorize、rate limit、operator acknowledgements をすべて `pass` と報告する必要があります。
 
-出力の similarity score はランキングのための数値であり、確率ではありません。しきい値を固定の業務ルールにする前に、対象の写真と語彙で評価してください。
+Seed の現在実行可能な command は `node apps/demo/scripts/seed-manifest.mjs [--remote --target <environment>]` です。これは validation/report 専用で Cloudflare に書き込みません。`--remote` に `--target` がなければ失敗し、remote を暗黙選択しません。
+
+offline CLI の正確な options は `pnpm vis <command> --help` を正本とします。`vis` の command は hosted release workflow ではありません。

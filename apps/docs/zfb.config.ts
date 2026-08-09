@@ -4,7 +4,7 @@ import { zudoDoc } from "@takazudo/zudo-doc/config";
 export default defineConfig(
   zudoDoc({
     siteName: "Vector Image Detection",
-    siteDescription: "Vector-based image search and tagging tools.",
+    siteDescription: "公開 AI 写真ライブラリーと、別系統のローカル画像ベクトル実験ツール。",
     siteUrl: "https://doc-vector-image-detection.takazudomodular.com",
     githubUrl: "https://github.com/Takazudo/vector-image-detection",
     sitemap: true,

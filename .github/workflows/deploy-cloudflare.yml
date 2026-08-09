@@ -89,6 +89,9 @@ jobs:
       - name: Build demo
         run: pnpm --filter @vector-image-detection/demo... run build
 
+      - name: Test production demo preflight gate
+        run: node --test scripts/cloudflare/demo-preflight.node-test.mjs
+
       - name: Dry-run demo deployment
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

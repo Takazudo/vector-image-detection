@@ -1,9 +1,9 @@
 ---
 title: 仕組み
-description: インデックス、二塔モデル、検索、タグ付けの境界
+description: Cloudflare 資源、D1 正本、非同期処理と検索の不変条件
 sidebar_position: 1
 ---
 
-この PoC の基礎は「埋め込む → ベクトルと付帯情報を保存する → コサイン類似度で探す」です。ローカル完結の範囲と、外部 API を使う任意機能の境界を理解してから運用してください。
+Worker Static Assets は SPA を配信し、`/api/*` を Worker に渡します。R2 は private、D1 は正本、Queue は非同期通知、Vectorize は派生 index です。構成図と検索制限は [処理・検索の設計](./index-and-search.mdx)、失敗復旧と deployment invariant は [本番構成](./production-mapping.mdx) にまとめています。
 
 <CategoryNav category="concepts" />
