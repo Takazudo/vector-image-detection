@@ -1,77 +1,87 @@
 # @vector-image-detection/demo
 
-Customer-facing demo for the photo vector search PoC. It loads a precomputed
-index bundle and runs search, categorization, and tagging entirely in the
-browser — there is no server component.
+This app is a Cloudflare Worker Static Assets deployment: the Worker serves the React SPA and handles `/api/*`. It is a public photo library only after an operator completes the production checklist and explicitly turns public writes on. It is intentionally read-only by default.
 
-The static shell is built by zfb. The complete React application is one
-`when="load"` client island, styled with Tailwind v4 utilities and a deliberately
-small semantic theme in `styles/global.css`.
+## Product boundary
 
-## Run it
+When writes are enabled, uploads and human-tag edits are anonymous. The Worker accepts JPEG, PNG, and WebP only, validates signature/header dimensions, limits each file to 5 MiB, applies same-origin and `Sec-Fetch-Site` checks, rate limits, and D1 daily/global quotas. These are abuse controls, not identity or content moderation.
 
-```sh
-pnpm demo:fixture   # copy the committed fixture bundle into public/data/
-pnpm demo:dev
+Originals stay in private R2 and are served through the Worker only when the photo is ready. They are not re-encoded; image metadata may remain exposed. There is no automated moderation, review queue, or reporting workflow. Operators can emergency-disable writes and issue a reactive purge, which safely retries until R2 objects, every Vectorize generation, and D1 records are removed.
+
+## Data flow and search
+
+```mermaid
+sequenceDiagram
+  participant U as Browser
+  participant W as Worker
+  participant D as D1
+  participant R as Private R2
+  participant Q as Queue/DLQ
+  participant A as Workers AI
+  participant V as Vectorize
+  U->>W: validated upload
+  W->>D: upload operation + pending photo
+  W->>R: private object
+  W->>D: photo revision + transactional outbox
+  D-->>Q: dispatch now or scheduled repair
+  Q->>A: caption + AI words, then text embedding
+  A->>V: upsert photoId:documentRevision
+  A->>D: record canonical indexed revision / ready state
 ```
 
-`zfb preview` serves the last production build. `predev` and `prebuild` copy the
-version-matched ONNX WebAssembly runtime into `public/onnxruntime/`. The
-committed bundle has 100 real, license-attributed photos; its first text query
-downloads the matching SigLIP text tower into the browser cache.
+D1 is canonical. Queue delivery is at least once, so the outbox, handlers, leases, and repair jobs make duplicates and interrupted work safe. Photos progress through `pending`, `enqueue_failed`, `processing`, `ready`, retryable/terminal failure, and `tombstoned`; only ready, non-tombstoned media is readable.
 
-To run against real photos instead, point the CLI at a directory and export:
+Workers AI uses pinned `@cf/moondream/moondream3.1-9B-A2B` and `@cf/google/embeddinggemma-300m`. AI English caption/words are a model-owned, separately stored provenance stream. Human tags are separately stored and can be attached/removed by the public tag API; that API cannot alter AI words.
 
-```sh
-vis ingest ./photos
-vis export-demo      # writes meta.json + embeddings.bin + thumbs/ to public/data/
-```
+Search has fixed priority: **exact human tag**, then **exact AI word**, then **related**. Related means a semantic search over a text document made from AI-generated English caption/words plus human tags. It is not visual similarity or image-to-image search. Vectorize uses 768-dimensional cosine vectors and revision-stamped IDs (`photoId:documentRevision`); results are hydrated and filtered through D1 so stale/noncanonical generations cannot be returned. A Workers AI/Vectorize problem leaves exact matches usable and reports related-search degradation.
 
-With a real bundle the app switches to the SigLIP text tower automatically —
-about 100 MB on a first visit, cached by the browser afterwards.
-
-## Views
-
-| View            | Backed by                                                |
-| --------------- | -------------------------------------------------------- |
-| Gallery         | the bundle's items, tags, and attribution fields         |
-| Auto-categorize | `classifyByVocab` (primary) and `kmeans` / `suggestK`    |
-| Search          | text embedding in a worker, then `VectorStore.search`    |
-| Similar         | `VectorStore.search` against a stored vector             |
-| Vocabulary tags | `zeroShotTag` plus `softmaxOverVocab` for the share bars |
-| Attach a word   | `proposeTagPropagation` with per-proposal confirm/reject |
-
-## Model compatibility
-
-Whichever embedder built the index has to embed the queries too — a query vector
-is only comparable to vectors from the same space. The app reads `meta.modelId`
-and loads the corresponding text tower. There is no UI toggle, because there is
-no valid way to mix models.
-
-## Tag persistence
-
-Confirmed tags go to `localStorage`, keyed by index identity
-(`modelId` + `createdAt`) so they never leak across bundles, and are merged over
-the bundle's own tags at load. This is demo-scoped: a real deployment writes
-confirmed tags back into the index bundle (`vis tag`) or a database. The tag bar
-exposes JSON export and a reset.
-
-## Fixture
-
-`fixtures/bundle/` is committed and mirrors a `vis export-demo` output exactly,
-including 100 real photo thumbnails, vectors, `manifest.json`, and
-`CREDITS.md`. The latter two files retain each published image's source,
-author, and license. `fixtures/bundle.test.ts` verifies the bundle integrity
-and attribution metadata in CI.
-
-## Production checks
+## Local development and checks
 
 ```sh
-pnpm --filter @vector-image-detection/demo test:output
-pnpm --filter @vector-image-detection/demo test:smoke
+pnpm install
+pnpm --filter @vector-image-detection/demo run db:migrate:local
+pnpm --filter @vector-image-detection/demo run dev
+
+pnpm --filter @vector-image-detection/demo run test:worker
+pnpm --filter @vector-image-detection/demo run test:dom
+pnpm --filter @vector-image-detection/demo run test:output
+pnpm --filter @vector-image-detection/demo run typecheck
+pnpm --filter @vector-image-detection/demo run build
+pnpm --filter @vector-image-detection/demo run deploy:dry-run
+pnpm --filter @vector-image-detection/demo run deploy:dry-run:production
 ```
 
-The first command builds and asserts the root URLs, hydrated island, worker,
-photo bundle, attribution files, and ONNX output. The Playwright smoke drives
-missing-bundle retry, gallery, similarity, persistence, and verifies that the
-real model remains lazy until a text-driven feature is used.
+`wrangler dev` uses the local configuration and fake/test providers where applicable. It does not prove compatibility with live Workers AI or Vectorize. The local `ai.remote` binding requires Cloudflare access if code actually invokes it; tests must use provider fakes.
+
+## Later production provisioning and release
+
+The checked-in production config contains inert placeholders and `PUBLIC_WRITES_ENABLED: "false"`. Never edit it with a real account ID or resource name. Use CI/release environment variables to render `.wrangler.production.generated.json` only after an operator has provisioned the resources named in the [operator guide](../docs/src/content/docs/guides/demo-and-own-photos.mdx).
+
+The deploy workflow has two independent jobs:
+
+1. Docs build, dry-run, and deploy without the demo readiness gate.
+2. Demo dry-run, then authenticated `GET /api/v1/operator/readiness` preflight, then deploy.
+
+`pnpm run cloudflare:demo-preflight` requires `DEMO_PREFLIGHT_URL`, `DEMO_PREFLIGHT_TOKEN`, and exact values for all three acknowledgements:
+
+```sh
+ACK_ANONYMOUS_PUBLIC_WRITES=I_ACKNOWLEDGE_ANONYMOUS_PUBLIC_WRITES
+ACK_RETAINED_IMAGE_METADATA=I_ACKNOWLEDGE_RETAINED_IMAGE_METADATA
+ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
+```
+
+The readiness endpoint must confirm production configuration, D1/migrations, private R2, Queue/DLQ, Workers AI binding, a 768-dimensional cosine Vectorize index, rate limiting, pinned models, public writes, and acknowledgements. It performs binding/configuration checks without a billable AI inference. Live end-to-end provider smoke tests remain deferred until resources exist.
+
+## Seed collection
+
+The 100 credited seed thumbnails under `fixtures/bundle/thumbs/` are the only repository media seed collection. [CREDITS.md](fixtures/bundle/CREDITS.md) and `manifest.json` retain the source, author, and licensing material. Only thumbnails are versioned; no full-resolution upstream originals are bundled.
+
+```sh
+# validates local 100-entry manifest; it does not write Cloudflare resources
+node apps/demo/scripts/seed-manifest.mjs
+
+# remote selection is explicit; this still validates the manifest only
+node apps/demo/scripts/seed-manifest.mjs --remote --target production
+```
+
+The internal importer uses the same validation, D1 upload-operation, private R2, and outbox path as uploads. Stable seed IDs/checksums make reruns idempotent, resume interrupted work, and replace changed content safely. It copies attribution but never imports `knownLabel` as an AI word or human tag, nor legacy embeddings. The external command that invokes that importer against local or remote resources has not yet been wired; do not describe the validation command as seeding.

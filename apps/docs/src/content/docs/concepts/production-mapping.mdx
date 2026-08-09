@@ -1,19 +1,19 @@
 ---
-title: 本番への対応付け
-description: ローカル PoC の部品を、規模に応じて差し替える考え方
+title: 本番構成と復旧
+description: Cloudflare binding、状態遷移、保守 job の責務
 sidebar_position: 4
 ---
 
-この PoC はノート PC で無料に試せるよう、ローカルフォルダー、transformers.js、in-memory search を採用しています。処理の形は本番でも同じです。
+| 資源                            | 本番での責務                                  | 必須 invariant                                                     |
+| ------------------------------- | --------------------------------------------- | ------------------------------------------------------------------ |
+| Worker Static Assets            | SPA と `/api/*`                               | `/api/*` は Worker first、assets は SPA fallback                   |
+| D1 (`DB`)                       | catalog、provenance、outbox、quota、tombstone | migration `0001_public_photo_library.sql` と pinned model metadata |
+| R2 (`PHOTOS`)                   | private original                              | URL を公開せず Worker 経由の ready media のみ                      |
+| Queue / DLQ                     | enrich/reindex/repair/purge                   | consumer と dead letter queue、最大 retry 8                        |
+| Workers AI (`AI`)               | vision と text embedding                      | moondream3.1-9B-A2B / embeddinggemma-300m                          |
+| Vectorize (`PHOTO_VECTORS`)     | derived semantic vectors                      | 768 dimensions、cosine、revision-stamped IDs                       |
+| Rate Limit (`WRITE_RATE_LIMIT`) | 公開 write の短期制限                         | D1 quota と併用、認証の代替ではない                                |
 
-| 段階         | この PoC                                | 本番の例                                                   |
-| ------------ | --------------------------------------- | ---------------------------------------------------------- |
-| 埋め込み     | ローカル SigLIP                         | Vertex AI の multimodal embedding、または GPU 上の SigLIP2 |
-| ベクトル保存 | in-memory `VectorStore` / 任意の Qdrant | Qdrant、pgvector とメタデータフィルター                    |
-| 画像取り込み | ローカルフォルダーをバッチ走査          | オブジェクトストレージのアップロードイベント               |
-| 検索         | 正確な総当たり cosine                   | 同じ意味論の DB 検索、必要に応じ ANN                       |
-| タグ         | ローカル語彙・見本伝播                  | 同じ方式に VLM や少量の追加学習を追加                      |
+状態は `pending`、`enqueue_failed`、`processing`、`ready`、`failed`、`tombstoned` を中心に扱います。failed のうち retryable なものは lease/backoff/outbox repair で復旧し、terminal/DLQ は運用者が原因を確認します。tombstone は R2、全 vector generation、D1 関連行を削除できるまで retryable に保持します。
 
-数万枚までは正確な総当たり検索が実用的な場合があります。おおむね 100,000 枚を超える、複数ユーザーの同時利用、規模の大きいメタデータ絞り込み、継続的な取り込みが必要になった時点で ANN とサーバー側のストアを検討してください。
-
-`VectorStore` は交換可能ですが、埋め込みモデルを変えると空間そのものが変わるため全件再インデックスが必要です。この一点は単純なインフラ差し替えではありません。
+既定の上限は 5 MiB、最小 32 / 最大 12,000 px、40M pixels、tag 64 文字・写真あたり 32、bulk 50、日次 upload 500、全 stored photo 10,000、処理 lease 5 分です。値を変更する場合は UI 文言、Worker validation、quota/retention 運用を同時に見直してください。

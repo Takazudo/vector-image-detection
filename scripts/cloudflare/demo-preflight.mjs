@@ -13,6 +13,19 @@ export const REQUIRED_ACKNOWLEDGEMENTS = {
   ACK_REACTIVE_PURGE_ONLY: "I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION",
 };
 
+export const REQUIRED_READINESS_CHECKS = [
+  "configuration",
+  "d1",
+  "migrations",
+  "r2",
+  "queue",
+  "dlq",
+  "workers_ai",
+  "vectorize",
+  "rate_limit",
+  "operator_acknowledgements",
+];
+
 export function validateAcknowledgements(environment) {
   for (const [name, expected] of Object.entries(REQUIRED_ACKNOWLEDGEMENTS)) {
     if (environment[name] !== expected) {
@@ -33,7 +46,15 @@ export function validateReadiness(body) {
       throw new Error(`Production readiness reported an unexpected ${key}.`);
     }
   }
-  const failed = body.checks?.filter(({ status }) => status !== "pass") ?? ["missing checks"];
+  if (!Array.isArray(body.checks)) {
+    throw new Error("Production readiness is missing binding checks.");
+  }
+  const checksByName = new Map(body.checks.map((check) => [check.name, check]));
+  const missing = REQUIRED_READINESS_CHECKS.filter((name) => !checksByName.has(name));
+  if (missing.length > 0) {
+    throw new Error(`Production readiness is missing required checks: ${missing.join(", ")}.`);
+  }
+  const failed = body.checks.filter(({ status }) => status !== "pass");
   if (failed.length > 0) {
     throw new Error("Production readiness contains failed or deferred binding checks.");
   }

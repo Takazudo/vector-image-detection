@@ -1,11 +1,16 @@
 ---
-title: 概要
-description: 写真に事前のラベルがなくても検索・整理を始めるための PoC
+title: 公開 AI 写真ライブラリー
+description: Cloudflare 上の匿名アップロード写真ライブラリーの境界と全体像
 sidebar_position: 1
 ---
 
-Vector Image Detection は、フォルダー内の未整理な写真をベクトル化し、言葉や似た写真で探せるようにする TypeScript 製の PoC です。電気部品、在庫、現場写真など、ファイル名やタグだけでは見つけにくい写真の山を対象にしています。
+このプロジェクトのホスト済みアプリは、公開書き込みを有効にしたときだけ匿名利用者が写真をアップロードし、人間のタグを付けられる写真ライブラリーです。既定は読み取り専用です。
 
-ローカルの SigLIP モデルで画像を 768 次元のベクトルに変換するため、通常の検索・類似検索・語彙による分類は API キーなしで実行できます。まずは [モックのクイックスタート](/docs/getting-started/mock-quickstart) で画面と流れを、次に [実モデルのクイックスタート](/docs/getting-started/real-model-quickstart) で品質を確かめてください。
+<Warning>
+  公開書き込みを有効にすると匿名アップロードと匿名タグ編集を受け付けます。元画像は再エンコードしないためメタデータが残ることがあります。自動モデレーション、審査キュー、通報機能はありません。問題のあるコンテンツは運用者が後から
+  purge するだけです。
+</Warning>
+
+アップロードは private R2、正本は D1、非同期処理は Queue/DLQ、説明文・AI 語・埋め込みは Workers AI、派生検索ベクトルは Vectorize に置きます。詳しくは [できることと限界](./what-it-does.mdx) と [処理・検索の設計](../concepts/index-and-search.mdx) を参照してください。
 
 <CategoryNav category="overview" />
