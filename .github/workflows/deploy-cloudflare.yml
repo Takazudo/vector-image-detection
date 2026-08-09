@@ -57,12 +57,6 @@ jobs:
       - name: Assert deployable static assets
         run: pnpm run cloudflare:assets
 
-      - name: Verify zone and hostname ownership
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: pnpm run cloudflare:preflight
-
       - name: Dry-run docs deployment
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
