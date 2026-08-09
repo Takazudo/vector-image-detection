@@ -1,11 +1,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "vector-image-detection-demo-local",
+  "name": "vector-image-detection-demo",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "vector-image-detection.takazudomodular.com",
+      "custom_domain": true,
+    },
+  ],
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
@@ -14,53 +20,52 @@
     "run_worker_first": ["/api/*"],
   },
   "vars": {
-    "APP_ENV": "local",
+    "APP_ENV": "production",
     "PUBLIC_WRITES_ENABLED": "false",
     "ACK_ANONYMOUS_PUBLIC_WRITES": "false",
     "ACK_RETAINED_IMAGE_METADATA": "false",
     "ACK_REACTIVE_PURGE_ONLY": "false",
-    "OPERATOR_PREFLIGHT_TOKEN": "local-development-only",
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "vector-image-detection-demo-local",
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_name": "REPLACE_WITH_PRODUCTION_D1_NAME",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./migrations",
     },
   ],
   "r2_buckets": [
     {
       "binding": "PHOTOS",
-      "bucket_name": "vector-image-detection-demo-local",
+      "bucket_name": "replace-with-production-r2-bucket",
     },
   ],
   "queues": {
     "producers": [
-      { "binding": "PHOTO_QUEUE", "queue": "vector-image-detection-photo-jobs-local" },
-      { "binding": "PHOTO_DLQ", "queue": "vector-image-detection-photo-dlq-local" },
+      { "binding": "PHOTO_QUEUE", "queue": "replace-with-production-photo-queue" },
+      { "binding": "PHOTO_DLQ", "queue": "replace-with-production-photo-dlq" },
     ],
     "consumers": [
       {
-        "queue": "vector-image-detection-photo-jobs-local",
+        "queue": "replace-with-production-photo-queue",
         "max_batch_size": 5,
         "max_batch_timeout": 5,
         "max_retries": 8,
-        "dead_letter_queue": "vector-image-detection-photo-dlq-local",
+        "dead_letter_queue": "replace-with-production-photo-dlq",
       },
     ],
   },
-  "ai": { "binding": "AI", "remote": true },
+  "ai": { "binding": "AI" },
   "vectorize": [
     {
       "binding": "PHOTO_VECTORS",
-      "index_name": "vector-image-detection-photos-local",
+      "index_name": "replace-with-production-vector-index",
     },
   ],
   "ratelimits": [
     {
       "name": "WRITE_RATE_LIMIT",
-      "namespace_id": "1000001",
+      "namespace_id": "1000002",
       "simple": { "limit": 30, "period": 60 },
     },
   ],
@@ -68,5 +73,6 @@
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 },
   },
 }

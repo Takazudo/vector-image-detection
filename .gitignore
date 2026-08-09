@@ -8,3 +8,5 @@ worktrees/
 .cache/
 coverage/
 *.tsbuildinfo
+.wrangler/
+.wrangler.production.generated.json

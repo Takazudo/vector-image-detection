@@ -36,6 +36,7 @@ const sites = {
   },
   demo: {
     directory: "apps/demo",
+    configFile: "wrangler.production.jsonc",
     expectedConfig: {
       name: "vector-image-detection-demo",
       hostname: "vector-image-detection.takazudomodular.com",
@@ -69,7 +70,9 @@ function assertConfig(siteName, config, expected) {
 async function assertSite(siteName) {
   const site = sites[siteName];
   const root = path.join(ROOT, site.directory);
-  const config = parseJsonc(await readFile(path.join(root, "wrangler.jsonc"), "utf8"));
+  const config = parseJsonc(
+    await readFile(path.join(root, site.configFile ?? "wrangler.jsonc"), "utf8"),
+  );
   assertConfig(siteName, config, site.expectedConfig);
 
   for (const relativePath of site.files) {

@@ -51,6 +51,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Apply D1 migration locally
+        run: pnpm run cloudflare:migrate:local
+
       - name: Check generated docs
         run: pnpm --filter @vector-image-detection/docs run check
 
