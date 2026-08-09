@@ -24,6 +24,7 @@ export const VALIDATION_LIMITS = {
   maximumAiWordCount: 64,
   maximumAiWordLength: 64,
   dailyUploadQuota: 500,
+  dailyTagMutationQuota: 250,
   globalStoredPhotoQuota: 10_000,
   processingLeaseSeconds: 5 * 60,
   uploadOperationExpirySeconds: 15 * 60,

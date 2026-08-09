@@ -60,20 +60,21 @@ function fakeClient(overrides: Partial<PhotoLibraryClient> = {}): PhotoLibraryCl
       checks: [],
     }),
     listPhotos: async () => ({ version: "v1", items: [item], nextCursor: null }),
-    createUpload: async () => ({
+    uploadPhoto: async () => ({
       version: "v1",
       operationId: "operation-1",
       photoId: "photo-2",
-      state: "pending",
-      uploadUrl: "/upload",
-      expiresAt: "2026-08-10T01:00:00.000Z",
+      state: "completed",
+      retryable: false,
+      errorCode: null,
+      updatedAt: "2026-08-10T00:00:01.000Z",
     }),
-    uploadFile: vi.fn(async () => undefined),
     uploadStatus: async () => ({
       version: "v1",
       operationId: "operation-1",
       photoId: "photo-2",
       state: "completed",
+      photoState: "ready",
       retryable: false,
       errorCode: null,
       updatedAt: "2026-08-10T00:00:02.000Z",
@@ -134,8 +135,8 @@ beforeEach(() => {
 
 describe("public photo library", () => {
   it("keeps the native multi-file input baseline and gives local validation before API upload", async () => {
-    const createUpload = vi.fn<PhotoLibraryClient["createUpload"]>();
-    const client = fakeClient({ createUpload });
+    const uploadPhoto = vi.fn<PhotoLibraryClient["uploadPhoto"]>();
+    const client = fakeClient({ uploadPhoto });
     render(<App client={client} />);
     const input = await screen.findByLabelText(/choose photos/i);
     expect((input as HTMLInputElement).type).toBe("file");
@@ -148,12 +149,12 @@ describe("public photo library", () => {
         "notes.txt: choose a JPEG, PNG, or WebP image",
       ),
     );
-    expect(createUpload).not.toHaveBeenCalled();
+    expect(uploadPhoto).not.toHaveBeenCalled();
   });
 
   it("announces upload transitions and authoritative quota/rate errors with retry policy", async () => {
     const client = fakeClient({
-      createUpload: vi.fn(async () => {
+      uploadPhoto: vi.fn(async () => {
         throw new ApiClientError("Daily upload quota reached", "quota_exceeded", false, 429);
       }),
     });

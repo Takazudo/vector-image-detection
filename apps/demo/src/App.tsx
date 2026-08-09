@@ -13,12 +13,11 @@ import { StatusBanner } from "./components/StatusBanner";
 import {
   ApiClientError,
   browserPhotoLibraryClient,
-  sha256Hex,
   type PhotoLibraryClient,
 } from "./lib/photo-library-client";
 import { validateUploadFile } from "./lib/upload-validation";
 import type { BulkHumanTagMutationResult, SearchResult, SearchTier } from "./worker/contracts/api";
-import type { PhotoSummary, SupportedImageMimeType } from "./worker/contracts/domain";
+import type { PhotoSummary } from "./worker/contracts/domain";
 
 type UploadPhase = "queued" | "uploading" | "processing" | "ready" | "retryable" | "failed";
 interface UploadItem {
@@ -137,32 +136,28 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
       uploadControllers.current.get(key)?.abort();
       uploadControllers.current.set(key, controller);
       try {
-        updateUpload(key, generation, { phase: "uploading", message: "Preparing secure upload" });
-        const sha256 = await sha256Hex(file);
-        const created = await client.createUpload(
-          {
-            version: "v1",
-            filename: file.name,
-            declaredMimeType: file.type as SupportedImageMimeType,
-            byteSize: file.size,
-            sha256,
-          },
-          controller.signal,
-        );
+        updateUpload(key, generation, { phase: "uploading", message: "Uploading securely" });
+        const created = await client.uploadPhoto(file, controller.signal);
         if (uploadGenerations.current.get(key) !== generation) return;
-        await client.uploadFile(created.uploadUrl, file, controller.signal);
         updateUpload(key, generation, {
           phase: "processing",
           message: "Upload stored; waiting for processing",
         });
 
         let status = await client.uploadStatus(created.operationId, controller.signal);
-        while (["pending", "object_stored"].includes(status.state)) {
+        while (
+          status.photoState !== "ready" &&
+          !["failed", "expired", "purge_pending"].includes(status.state) &&
+          !["failed", "enqueue_failed"].includes(status.photoState ?? "")
+        ) {
           await sleep(1_000, controller.signal);
           if (uploadGenerations.current.get(key) !== generation) return;
           status = await client.uploadStatus(created.operationId, controller.signal);
         }
-        if (["enqueue_failed", "failed", "expired", "purge_pending"].includes(status.state)) {
+        if (
+          ["enqueue_failed", "failed", "expired", "purge_pending"].includes(status.state) ||
+          ["failed", "enqueue_failed"].includes(status.photoState ?? "")
+        ) {
           updateUpload(key, generation, {
             phase: status.retryable ? "retryable" : "failed",
             message: status.errorCode ?? phaseLabel[status.retryable ? "retryable" : "failed"],
@@ -170,23 +165,6 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
           return;
         }
 
-        let detail = await client.getPhoto(created.photoId, controller.signal);
-        while (["pending", "enqueue_failed", "processing"].includes(detail.photo.state)) {
-          if (detail.photo.state === "enqueue_failed") {
-            updateUpload(key, generation, {
-              phase: "retryable",
-              message: "Processing queue unavailable",
-            });
-            return;
-          }
-          await sleep(1_000, controller.signal);
-          if (uploadGenerations.current.get(key) !== generation) return;
-          detail = await client.getPhoto(created.photoId, controller.signal);
-        }
-        if (detail.photo.state !== "ready") {
-          updateUpload(key, generation, { phase: "failed", message: "Image processing failed" });
-          return;
-        }
         updateUpload(key, generation, { phase: "ready", message: "Added to the public library" });
         await reloadPhotos(controller.signal);
       } catch (error) {

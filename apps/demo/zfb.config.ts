@@ -6,5 +6,4 @@ export default defineConfig({
   publicDir: "public",
   output: "static",
   tailwind: { enabled: true },
-  plugins: [{ name: "./scripts/zfb-demo-plugin.mjs" }],
 });

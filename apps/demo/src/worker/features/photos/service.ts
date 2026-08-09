@@ -357,14 +357,16 @@ export async function findUnchangedSeed(
 export async function getUploadStatus(database: D1Database, operationId: string) {
   return database
     .prepare(
-      `SELECT id AS operationId, photo_id AS photoId, state, error_retryable AS retryable,
-      error_code AS errorCode, updated_at AS updatedAt FROM upload_operations WHERE id = ?`,
+      `SELECT u.id AS operationId, u.photo_id AS photoId, u.state, p.state AS photoState,
+      u.error_retryable AS retryable, u.error_code AS errorCode, u.updated_at AS updatedAt
+      FROM upload_operations u LEFT JOIN photos p ON p.id = u.photo_id WHERE u.id = ?`,
     )
     .bind(operationId)
     .first<{
       operationId: string;
       photoId: string | null;
       state: UploadOperationState;
+      photoState: PhotoSummary["state"] | null;
       retryable: number;
       errorCode: string | null;
       updatedAt: string;

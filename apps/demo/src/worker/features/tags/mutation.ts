@@ -9,7 +9,7 @@ import type { ReindexQueueMessage } from "../../contracts/queue";
 import type { PlatformProviders } from "../../providers";
 import { normalizeTagWord } from "./normalization";
 
-export const TAG_MUTATION_DAILY_QUOTA = 250;
+export const TAG_MUTATION_DAILY_QUOTA = VALIDATION_LIMITS.dailyTagMutationQuota;
 const QUOTA_WINDOW_SECONDS = 24 * 60 * 60;
 
 interface PhotoMutationRow {
