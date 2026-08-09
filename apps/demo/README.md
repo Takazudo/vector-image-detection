@@ -62,7 +62,7 @@ The checked-in production config contains inert placeholders and `PUBLIC_WRITES_
 The deploy workflow has two independent jobs:
 
 1. Docs build, dry-run, and deploy without the demo readiness gate.
-2. Demo dry-run, then authenticated `GET /api/v1/operator/readiness` preflight, then deploy.
+2. Demo dry-run, then authenticated `GET /api/v1/operator/readiness` preflight, then deploy—but only after an operator explicitly sets the repository variable `DEMO_DEPLOYMENT_ENABLED=true`. Leave it unset while account provisioning is deferred; the demo job will be skipped without turning the docs workflow red.
 
 `pnpm run cloudflare:demo-preflight` requires `DEMO_PREFLIGHT_URL`, `DEMO_PREFLIGHT_TOKEN`, and exact values for all three acknowledgements:
 

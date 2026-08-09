@@ -70,6 +70,9 @@ jobs:
         run: pnpm --filter @vector-image-detection/docs exec wrangler deploy
 
   deploy-demo:
+    # Provisioning is intentionally deferred. An operator must opt into this
+    # job before its independent authenticated preflight can authorize deploy.
+    if: ${{ vars.DEMO_DEPLOYMENT_ENABLED == 'true' }}
     needs: deploy-docs
     runs-on: ubuntu-latest
     timeout-minutes: 30
