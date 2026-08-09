@@ -4,11 +4,11 @@ import type {
   IsoTimestamp,
   PhotoDetail,
   PhotoId,
-  PhotoState,
   PhotoSummary,
   SourceAttribution,
   SupportedImageMimeType,
   UploadOperationId,
+  UploadOperationState,
 } from "./domain";
 
 export interface VersionedDto {
@@ -58,7 +58,7 @@ export interface CreateUploadRequest extends VersionedDto {
 export interface CreateUploadResponse extends VersionedDto {
   operationId: UploadOperationId;
   photoId: PhotoId;
-  state: Extract<PhotoState, "pending">;
+  state: Extract<UploadOperationState, "pending">;
   uploadUrl: string;
   expiresAt: IsoTimestamp;
 }
@@ -66,7 +66,7 @@ export interface CreateUploadResponse extends VersionedDto {
 export interface UploadStatusResponse extends VersionedDto {
   operationId: UploadOperationId;
   photoId: PhotoId | null;
-  state: PhotoState;
+  state: UploadOperationState;
   retryable: boolean;
   errorCode: string | null;
   updatedAt: IsoTimestamp;
@@ -116,6 +116,12 @@ export interface BulkHumanTagMutationResponse extends VersionedDto {
 }
 
 export type SearchTier = "exact_human_tag" | "exact_ai_word" | "semantic";
+
+export const SEARCH_TIER_ORDER: readonly SearchTier[] = [
+  "exact_human_tag",
+  "exact_ai_word",
+  "semantic",
+];
 
 export type SearchReason =
   | { tier: "exact_human_tag"; normalizedTag: string }

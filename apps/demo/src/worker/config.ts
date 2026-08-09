@@ -20,6 +20,7 @@ export const VALIDATION_LIMITS = {
   defaultPageSize: 24,
   maximumQueryLength: 256,
   maximumAiCaptionLength: 4_096,
+  maximumAiOutputBytes: 16 * 1024,
   maximumAiWordCount: 64,
   maximumAiWordLength: 64,
   dailyUploadQuota: 500,

@@ -41,5 +41,16 @@ describe("Queue contract", () => {
         enqueuedAt: "2026-08-10T00:00:00.000Z",
       }).success,
     ).toBe(false);
+    expect(
+      photoQueueMessageSchema.safeParse({
+        version: 1,
+        type: "enrich",
+        operationId: "operation-1",
+        photoId: "photo-1",
+        requestedDocumentRevision: 2,
+        enqueuedAt: "2026-08-10T00:00:00.000Z",
+        unversionedExtraField: true,
+      }).success,
+    ).toBe(false);
   });
 });

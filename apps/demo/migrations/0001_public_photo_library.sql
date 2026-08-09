@@ -23,8 +23,11 @@ CREATE TABLE photos (
   sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
   r2_object_key TEXT NOT NULL UNIQUE,
   r2_version TEXT,
+  r2_etag TEXT NOT NULL,
+  r2_uploaded_at TEXT NOT NULL,
+  r2_custom_metadata_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(r2_custom_metadata_json)),
   upload_operation_id TEXT NOT NULL UNIQUE,
-  ai_caption TEXT,
+  ai_caption TEXT CHECK (ai_caption IS NULL OR length(ai_caption) <= 4096),
   document_revision INTEGER NOT NULL DEFAULT 1 CHECK (document_revision >= 1),
   reindex_required_revision INTEGER CHECK (reindex_required_revision IS NULL OR reindex_required_revision >= 1),
   canonical_indexed_revision INTEGER CHECK (canonical_indexed_revision IS NULL OR canonical_indexed_revision >= 1),
@@ -48,6 +51,7 @@ CREATE TABLE photos (
   CHECK (width * height <= 40000000),
   CHECK (canonical_indexed_revision IS NULL OR canonical_indexed_revision <= document_revision),
   CHECK (reindex_required_revision IS NULL OR reindex_required_revision <= document_revision),
+  CHECK (canonical_vector_id IS NULL OR length(CAST(canonical_vector_id AS BLOB)) <= 64),
   CHECK (
     (canonical_indexed_revision IS NULL AND canonical_vector_id IS NULL) OR
     (canonical_indexed_revision IS NOT NULL AND canonical_vector_id = id || ':' || canonical_indexed_revision)
@@ -58,15 +62,18 @@ CREATE TABLE upload_operations (
   id TEXT PRIMARY KEY,
   photo_id TEXT UNIQUE REFERENCES photos(id) ON DELETE SET NULL,
   state TEXT NOT NULL CHECK (state IN ('pending', 'object_stored', 'enqueue_failed', 'completed', 'failed', 'expired', 'purge_pending')),
-  client_filename TEXT NOT NULL,
+  client_filename TEXT NOT NULL CHECK (length(client_filename) BETWEEN 1 AND 255),
   declared_mime_type TEXT NOT NULL CHECK (declared_mime_type IN ('image/jpeg', 'image/png', 'image/webp')),
   detected_mime_type TEXT CHECK (detected_mime_type IS NULL OR detected_mime_type IN ('image/jpeg', 'image/png', 'image/webp')),
   expected_byte_size INTEGER NOT NULL CHECK (expected_byte_size BETWEEN 1 AND 5242880),
-  actual_byte_size INTEGER,
+  actual_byte_size INTEGER CHECK (actual_byte_size IS NULL OR actual_byte_size BETWEEN 1 AND 5242880),
   expected_sha256 TEXT NOT NULL CHECK (length(expected_sha256) = 64),
-  actual_sha256 TEXT,
+  actual_sha256 TEXT CHECK (actual_sha256 IS NULL OR length(actual_sha256) = 64),
   r2_object_key TEXT NOT NULL UNIQUE,
   r2_version TEXT,
+  r2_etag TEXT,
+  r2_uploaded_at TEXT,
+  r2_custom_metadata_json TEXT CHECK (r2_custom_metadata_json IS NULL OR json_valid(r2_custom_metadata_json)),
   attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
   error_code TEXT,
   error_message TEXT,
@@ -78,31 +85,86 @@ CREATE TABLE upload_operations (
   completed_at TEXT
 ) STRICT;
 
+CREATE TRIGGER photos_require_durable_upload_operation
+BEFORE INSERT ON photos
+WHEN NOT EXISTS (
+  SELECT 1
+  FROM upload_operations
+  WHERE id = NEW.upload_operation_id
+    AND r2_object_key = NEW.r2_object_key
+)
+BEGIN
+  SELECT RAISE(ABORT, 'photo requires a matching durable upload operation');
+END;
+
+CREATE TRIGGER photos_keep_upload_operation_identity
+BEFORE UPDATE OF upload_operation_id, r2_object_key ON photos
+WHEN NOT EXISTS (
+  SELECT 1
+  FROM upload_operations
+  WHERE id = NEW.upload_operation_id
+    AND r2_object_key = NEW.r2_object_key
+)
+BEGIN
+  SELECT RAISE(ABORT, 'photo upload operation identity must remain valid');
+END;
+
+CREATE TRIGGER upload_operations_keep_photo_identity
+BEFORE UPDATE OF id, photo_id, r2_object_key ON upload_operations
+WHEN NEW.photo_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1
+  FROM photos
+  WHERE id = NEW.photo_id
+    AND upload_operation_id = NEW.id
+    AND r2_object_key = NEW.r2_object_key
+)
+BEGIN
+  SELECT RAISE(ABORT, 'upload operation must reference its matching photo');
+END;
+
+CREATE TRIGGER upload_operations_prevent_orphaned_photo
+BEFORE DELETE ON upload_operations
+WHEN EXISTS (
+  SELECT 1
+  FROM photos
+  WHERE upload_operation_id = OLD.id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'delete the photo before its upload operation');
+END;
+
 CREATE TABLE ai_model_runs (
   id TEXT PRIMARY KEY,
   photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
   operation_id TEXT NOT NULL,
   requested_document_revision INTEGER NOT NULL CHECK (requested_document_revision >= 1),
-  vision_model_id TEXT NOT NULL,
-  embedding_model_id TEXT NOT NULL,
+  vision_model_id TEXT NOT NULL CHECK (vision_model_id = '@cf/moondream/moondream3.1-9B-A2B'),
+  embedding_model_id TEXT NOT NULL CHECK (embedding_model_id = '@cf/google/embeddinggemma-300m'),
   prompt_version INTEGER NOT NULL CHECK (prompt_version >= 1),
-  document_version INTEGER NOT NULL CHECK (document_version >= 1),
-  caption TEXT,
-  raw_output_bytes INTEGER CHECK (raw_output_bytes IS NULL OR raw_output_bytes >= 0),
+  document_version INTEGER NOT NULL CHECK (document_version = 1),
+  caption TEXT CHECK (caption IS NULL OR length(caption) <= 4096),
+  raw_output_bytes INTEGER CHECK (raw_output_bytes IS NULL OR raw_output_bytes BETWEEN 0 AND 16384),
   started_at TEXT NOT NULL,
   completed_at TEXT,
-  UNIQUE (photo_id, operation_id)
+  UNIQUE (photo_id, operation_id),
+  UNIQUE (id, photo_id, requested_document_revision)
 ) STRICT;
 
 CREATE TABLE photo_ai_words (
   photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
-  model_run_id TEXT NOT NULL REFERENCES ai_model_runs(id) ON DELETE CASCADE,
+  model_run_id TEXT NOT NULL,
+  document_revision INTEGER NOT NULL CHECK (document_revision >= 1),
   word TEXT NOT NULL,
   normalized_word TEXT NOT NULL,
-  confidence REAL,
+  confidence REAL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
   position INTEGER NOT NULL CHECK (position >= 0),
   created_at TEXT NOT NULL,
-  PRIMARY KEY (photo_id, model_run_id, normalized_word)
+  CHECK (length(word) BETWEEN 1 AND 64),
+  CHECK (length(normalized_word) BETWEEN 1 AND 64),
+  PRIMARY KEY (photo_id, document_revision, normalized_word),
+  FOREIGN KEY (model_run_id, photo_id, document_revision)
+    REFERENCES ai_model_runs(id, photo_id, requested_document_revision)
+    ON DELETE CASCADE
 ) STRICT;
 
 CREATE TABLE human_tags (
@@ -143,7 +205,8 @@ CREATE TABLE queue_outbox (
   CHECK (
     (state = 'dispatching' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR
     (state <> 'dispatching')
-  )
+  ),
+  CHECK (message_type NOT IN ('enrich', 'reindex') OR requested_document_revision IS NOT NULL)
 ) STRICT;
 
 CREATE TABLE processing_runs (
@@ -167,7 +230,8 @@ CREATE TABLE processing_runs (
   CHECK (
     (state = 'processing' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL) OR
     state <> 'processing'
-  )
+  ),
+  CHECK (message_type NOT IN ('enrich', 'reindex') OR requested_document_revision IS NOT NULL)
 ) STRICT;
 
 CREATE TABLE quota_counters (
@@ -236,7 +300,7 @@ CREATE INDEX upload_operations_checksum_idx
   ON upload_operations (expected_sha256, expected_byte_size);
 
 CREATE INDEX photo_ai_words_exact_idx
-  ON photo_ai_words (normalized_word, photo_id);
+  ON photo_ai_words (normalized_word, photo_id, document_revision);
 CREATE INDEX photo_ai_words_photo_order_idx
   ON photo_ai_words (photo_id, position, normalized_word);
 CREATE INDEX photo_human_tags_photo_idx ON photo_human_tags (photo_id, tag_id);

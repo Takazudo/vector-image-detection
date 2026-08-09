@@ -8,6 +8,15 @@ export type IsoTimestamp = string;
 export type PhotoState =
   "pending" | "enqueue_failed" | "processing" | "ready" | "failed" | "tombstoned";
 
+export type UploadOperationState =
+  | "pending"
+  | "object_stored"
+  | "enqueue_failed"
+  | "completed"
+  | "failed"
+  | "expired"
+  | "purge_pending";
+
 export type SupportedImageMimeType = "image/jpeg" | "image/png" | "image/webp";
 
 export interface SourceAttribution {
@@ -24,6 +33,7 @@ export interface AiWord {
   normalizedWord: string;
   confidence: number | null;
   modelRunId: string;
+  documentRevision: number;
 }
 
 export interface HumanTag {

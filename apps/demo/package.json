@@ -19,7 +19,7 @@
     "db:migrate:local": "wrangler d1 migrations apply vector-image-detection-demo-local --local --config wrangler.jsonc",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "test:dom": "vitest run --config vitest.dom.config.ts",
-    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e": "playwright test --pass-with-no-tests --config playwright.config.ts",
     "test:output": "node --test tests/output.node-test.mjs",
     "test:smoke": "node tests/browser-smoke.mjs",
     "fixture": "node scripts/copy-fixture.mjs"

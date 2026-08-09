@@ -46,23 +46,23 @@ const baseShape = {
 const documentRevision = z.number().int().positive();
 
 export const photoQueueMessageSchema = z.discriminatedUnion("type", [
-  z.object({
+  z.strictObject({
     ...baseShape,
     type: z.literal("enrich"),
     requestedDocumentRevision: documentRevision,
   }),
-  z.object({
+  z.strictObject({
     ...baseShape,
     type: z.literal("reindex"),
     requestedDocumentRevision: documentRevision,
   }),
-  z.object({
+  z.strictObject({
     ...baseShape,
     type: z.literal("repair"),
     repairKind: z.enum(["upload", "outbox", "processing", "vector"]),
     requestedDocumentRevision: documentRevision.optional(),
   }),
-  z.object({ ...baseShape, type: z.literal("purge"), tombstoneRevision: documentRevision }),
+  z.strictObject({ ...baseShape, type: z.literal("purge"), tombstoneRevision: documentRevision }),
 ]);
 
 export type QueueMessageHandler<T extends PhotoQueueMessage["type"]> = (

@@ -26,12 +26,9 @@ for (const name of required) {
 }
 
 function parseJsonc(source) {
-  return JSON.parse(
-    source
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,\s*([}\]])/g, "$1"),
-  );
+  // These committed configs intentionally use JSON plus trailing commas only.
+  // Regex-based comment stripping corrupts string values such as "/api/*".
+  return JSON.parse(source.replace(/,\s*([}\]])/g, "$1"));
 }
 
 const config = parseJsonc(await readFile(path.join(ROOT, "wrangler.production.jsonc"), "utf8"));
