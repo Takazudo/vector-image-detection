@@ -82,6 +82,9 @@ node apps/demo/scripts/seed-manifest.mjs
 
 # remote selection is explicit; this still validates the manifest only
 node apps/demo/scripts/seed-manifest.mjs --remote --target production
+
+# executes the credential-free local D1/R2/outbox seed import and unchanged-rerun check
+pnpm run demo:seed:local
 ```
 
-The internal importer uses the same validation, D1 upload-operation, private R2, and outbox path as uploads. Stable seed IDs/checksums make reruns idempotent, resume interrupted work, and replace changed content safely. It copies attribution but never imports `knownLabel` as an AI word or human tag, nor legacy embeddings. The external command that invokes that importer against local or remote resources has not yet been wired; do not describe the validation command as seeding.
+The internal importer uses the same validation, D1 upload-operation, private R2, and outbox path as uploads. `demo:seed:local` runs it against deterministic local Worker resources, verifies all 100 records become ready with attribution, and checks an unchanged rerun. Stable seed IDs/checksums make reruns idempotent, resume interrupted work, and replace changed content safely. It copies attribution but never imports `knownLabel` as an AI word or human tag, nor legacy embeddings. The command deliberately rejects remote targets: remote seeding remains a deferred authenticated operator action after provisioning. Do not describe manifest validation as seeding or remote import.

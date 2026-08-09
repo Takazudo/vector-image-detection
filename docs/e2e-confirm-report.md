@@ -1,5 +1,9 @@
 # E2E Confirm Report — Issue #12
 
+> Historical archive (2026-08-08): this is an offline CLI/SigLIP experiment
+> record for the retired fixture-backed demo. It does not describe the current
+> hosted photo library, its Worker runtime, seed workflow, or release gates.
+
 Full end-to-end pipeline verification against the real SigLIP model on real
 sample data, run on the merged base (`photo-vector-search/confirm`, base
 commit `7bd0bd0`). Executed 2026-08-08.

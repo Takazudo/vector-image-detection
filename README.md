@@ -71,7 +71,7 @@ node apps/demo/scripts/seed-manifest.mjs
 node apps/demo/scripts/seed-manifest.mjs --remote --target production
 ```
 
-It validates/prints the 100 credited entries, source paths, and stable SHA-256 checksums. The importer itself is idempotent: stable seed IDs plus checksums skip completed unchanged items and make interrupted work resumable; changed checksums replace the old item through the purge path. `knownLabel` is a test expectation only: it is never imported as an AI word or a human tag, and legacy embeddings are not imported. The operator-facing command that invokes the importer against local/remote resources is pending integration; do not treat manifest validation as a remote import or deploy action.
+`pnpm run demo:seed:local` executes the credential-free local import check: it loads all 100 credited thumbnails through the D1/R2/outbox pipeline with deterministic providers, verifies ready/attributed records, and verifies an unchanged rerun. The importer is idempotent: stable seed IDs plus checksums skip completed unchanged items and make interrupted work resumable; changed checksums replace the old item through the purge path. `knownLabel` is a test expectation only: it is never imported as an AI word or a human tag, and legacy embeddings are not imported. This command explicitly rejects `--remote --target …`; remote seeding remains a deferred authenticated operator action after resources are provisioned. Manifest validation is not a remote import or deploy action.
 
 ## Offline CLI remains available
 

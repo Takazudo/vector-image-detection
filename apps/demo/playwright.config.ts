@@ -10,8 +10,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
-    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile-light", use: { ...devices["Pixel 7"], colorScheme: "light" } },
+    { name: "mobile-dark", use: { ...devices["Pixel 7"], colorScheme: "dark" } },
+    { name: "desktop-light", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
+    { name: "desktop-dark", use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
   ],
   webServer: {
     command: "pnpm run preview -- --host 127.0.0.1 --port 4173",
