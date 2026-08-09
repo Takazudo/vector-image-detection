@@ -14,8 +14,7 @@
     "deploy:dry-run": "pnpm run build && wrangler deploy --dry-run",
     "test:output": "node --test tests/output.node-test.mjs",
     "test:smoke": "node tests/browser-smoke.mjs",
-    "fixture": "node scripts/copy-fixture.mjs",
-    "fixture:generate": "node fixtures/generate.mjs"
+    "fixture": "node scripts/copy-fixture.mjs"
   },
   "dependencies": {
     "@takazudo/zfb": "1.1.1",

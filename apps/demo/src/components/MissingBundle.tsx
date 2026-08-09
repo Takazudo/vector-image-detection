@@ -15,15 +15,13 @@ export function MissingBundle({ message, onRetry }: MissingBundleProps) {
         yet.
       </p>
 
-      <h3 className="mt-xl mb-xs text-ui font-semibold">
-        Use the committed fixture (no downloads)
-      </h3>
+      <h3 className="mt-xl mb-xs text-ui font-semibold">Use the committed demo corpus</h3>
       <pre className="mb-xs overflow-x-auto rounded-md bg-sunken px-md py-sm text-sm [&_code]:bg-transparent [&_code]:p-0">
         <code>pnpm demo:fixture{"\n"}pnpm demo:dev</code>
       </pre>
       <p className="m-0 text-ui text-muted">
-        24 synthetic images with vectors from <code>fake-embedder-v1</code>. Every view works
-        offline because the fake embedding space aligns text with images.
+        The committed corpus has 100 real, license-attributed photos. Text search downloads the
+        model on first use; image-to-image similarity is ready immediately.
       </p>
 
       <h3 className="mt-xl mb-xs text-ui font-semibold">Or export a real index</h3>

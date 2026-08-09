@@ -16,12 +16,9 @@ pnpm demo:dev
 ```
 
 `zfb preview` serves the last production build. `predev` and `prebuild` copy the
-version-matched ONNX WebAssembly runtime into `public/onnxruntime/`; mock mode
-does not request those files or the real model.
-
-That is the zero-download path: the fixture's vectors come from core's
-`FakeEmbedder`, so the app embeds queries with the same deterministic stand-in
-and every view works offline.
+version-matched ONNX WebAssembly runtime into `public/onnxruntime/`. The
+committed bundle has 100 real, license-attributed photos; its first text query
+downloads the matching SigLIP text tower into the browser cache.
 
 To run against real photos instead, point the CLI at a directory and export:
 
@@ -44,12 +41,12 @@ about 100 MB on a first visit, cached by the browser afterwards.
 | Vocabulary tags | `zeroShotTag` plus `softmaxOverVocab` for the share bars |
 | Attach a word   | `proposeTagPropagation` with per-proposal confirm/reject |
 
-## Mock mode
+## Model compatibility
 
 Whichever embedder built the index has to embed the queries too — a query vector
-is only comparable to vectors from the same space. So the app reads
-`meta.modelId`: `fake-embedder-v1` selects `FakeEmbedder`, anything else loads
-the real model. There is no UI toggle, because there is no valid way to mix them.
+is only comparable to vectors from the same space. The app reads `meta.modelId`
+and loads the corresponding text tower. There is no UI toggle, because there is
+no valid way to mix models.
 
 ## Tag persistence
 
@@ -62,15 +59,10 @@ exposes JSON export and a reset.
 ## Fixture
 
 `fixtures/bundle/` is committed and mirrors a `vis export-demo` output exactly,
-thumbnail naming included. Regenerate it with:
-
-```sh
-pnpm --filter @vector-image-detection/demo fixture:generate
-```
-
-`fixtures/bundle.test.ts` is its acceptance test — it drives every view's
-underlying core call against the committed bundle, so a broken regeneration
-fails in CI rather than in a browser.
+including 100 real photo thumbnails, vectors, `manifest.json`, and
+`CREDITS.md`. The latter two files retain each published image's source,
+author, and license. `fixtures/bundle.test.ts` verifies the bundle integrity
+and attribution metadata in CI.
 
 ## Production checks
 
@@ -80,6 +72,6 @@ pnpm --filter @vector-image-detection/demo test:smoke
 ```
 
 The first command builds and asserts the root URLs, hydrated island, worker,
-fixture, and ONNX output. The Playwright smoke drives missing-bundle retry, all
-five views, similarity, persistence, and verifies that mock mode downloads no
-model.
+photo bundle, attribution files, and ONNX output. The Playwright smoke drives
+missing-bundle retry, gallery, similarity, persistence, and verifies that the
+real model remains lazy until a text-driven feature is used.

@@ -57,27 +57,11 @@ try {
   await page.getByRole("heading", { name: "No index bundle loaded" }).waitFor();
   await page.getByRole("button", { name: "Retry" }).click();
   await page.getByRole("heading", { name: "Gallery" }).waitFor();
-  assert.equal(await page.locator("figure").count(), 24);
+  assert.equal(await page.locator("figure").count(), 100);
+  await page.getByText("Model not loaded").waitFor();
 
   await page.locator("figure button").first().click();
   await page.getByRole("heading", { name: "Similar photos" }).waitFor();
-
-  await page.getByRole("button", { name: "Auto-categorize" }).click();
-  await page.getByRole("button", { name: "Group by words" }).click();
-  await page
-    .getByText("No photo is closest to this word.")
-    .or(page.locator("figure"))
-    .first()
-    .waitFor();
-
-  await page.getByRole("button", { name: "Search" }).click();
-  await page.getByLabel("Describe what you are looking for").fill("fixture 1");
-  await page.locator("form").getByRole("button", { name: "Search", exact: true }).click();
-  await page.getByText(/Top \d+ of 24/).waitFor();
-
-  await page.getByRole("button", { name: "Vocabulary tags" }).click();
-  await page.getByRole("button", { name: "Score vocabulary" }).click();
-  await page.getByText(/photos tagged/).waitFor();
 
   await page.getByRole("button", { name: "Attach a word" }).click();
   await page.locator("figure button").first().click();

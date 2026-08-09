@@ -50,7 +50,9 @@ const sites = {
       "dist/onnxruntime/ort-wasm-simd-threaded.wasm",
       "dist/data/meta.json",
       "dist/data/embeddings.bin",
-      "dist/data/thumbs/cat/cat-01.png.jpg",
+      "dist/data/manifest.json",
+      "dist/data/CREDITS.md",
+      "dist/data/thumbs/pets/cat-abyssinian-1.jpg.jpg",
     ],
   },
 };

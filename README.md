@@ -14,16 +14,16 @@ Everything is TypeScript: [transformers.js](https://huggingface.co/docs/transfor
 
 Two paths. The first downloads nothing and takes about a minute; the second runs the real model on real photos.
 
-### Path A — zero-download demo (mock mode)
+### Path A — public demo corpus
 
 ```sh
 pnpm install
 pnpm build
-pnpm demo:fixture   # copy the committed fixture bundle into apps/demo/public/data/
+pnpm demo:fixture   # copy the committed real-photo bundle into apps/demo/public/data/
 pnpm demo:dev       # http://localhost:5173
 ```
 
-The committed fixture bundle is built by core's `FakeEmbedder` — deterministic, generated shape images, no model weights involved. The demo reads `meta.modelId`, sees `fake-embedder-v1`, and embeds your queries with the same stand-in, so every view (search, similar, auto-categorize, vocabulary tags, attach-a-word) works offline. The results are structurally real but semantically meaningless; this path exists to exercise the UI and the wiring, not to demonstrate search quality.
+The committed bundle contains 100 real, license-attributed sample photos: 60 Oxford-IIIT Pet images and 40 Wikimedia Commons electronic-component images. Browsing and image-to-image similarity work immediately. The first text search, categorization, or vocabulary-tagging action downloads the local SigLIP text model (about 100 MB) into the browser cache. `apps/demo/fixtures/bundle/CREDITS.md` and `manifest.json` retain the source, author, and license information for the published photo thumbnails.
 
 ### Path B — real model, real photos
 
@@ -281,7 +281,7 @@ The documentation and browser demo deploy as separate Cloudflare Workers Static 
 - Docs: `doc-vector-image-detection.takazudomodular.com`
 - Demo: `vector-image-detection.takazudomodular.com`
 
-Both apps build to their own `dist/` directory. The docs Worker serves generated nested pages with trailing-slash handling and its generated `404.html`; the demo Worker uses SPA fallback so application deep links resolve to its shell while missing asset files still return a normal asset response. The demo build copies the committed fixture bundle before building, so `dist/data/` is always included in a clean checkout.
+Both apps build to their own `dist/` directory. The docs Worker serves generated nested pages with trailing-slash handling and its generated `404.html`; the demo Worker uses SPA fallback so application deep links resolve to its shell while missing asset files still return a normal asset response. The demo build copies the committed, license-attributed real-photo bundle before building, so `dist/data/` is always included in a clean checkout.
 
 For local release-readiness checks (these commands do not deploy), run:
 

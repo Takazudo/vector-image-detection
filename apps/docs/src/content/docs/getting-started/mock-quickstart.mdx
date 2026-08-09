@@ -1,6 +1,6 @@
 ---
-title: モックで 1 分試す
-description: モデルをダウンロードせず、デモの操作と配線を確認する
+title: 公開デモの写真で試す
+description: コミット済みのライセンス表示付き実写真を使ってデモを確認する
 sidebar_position: 2
 ---
 
@@ -15,6 +15,6 @@ pnpm demo:dev
 
 表示された URL（通常は `http://localhost:5173`）を開きます。`demo:fixture` はコミット済みの fixture bundle を `apps/demo/public/data/` にコピーします。
 
-この bundle は `FakeEmbedder` が生成した決定的な形状画像とベクトルです。`meta.modelId` が `fake-embedder-v1` のため、デモは同じスタンドインで検索語も埋め込み、ギャラリー、検索、類似、語彙タグ、分類、見本からのタグ付与をオフラインで動かせます。
+この bundle には 100 枚の実写真（Oxford-IIIT Pet 60 枚、Wikimedia Commons の電子部品 40 枚）が含まれます。`manifest.json` と `CREDITS.md` に各写真の出典、作者（提供される場合）、ライセンスを保持しています。
 
-ただし、結果は**構造的に正しくても意味的には無意味**です。実写真でどの程度見つかるかを示すものではありません。品質評価には [実モデルの手順](/docs/getting-started/real-model-quickstart) を使ってください。
+ギャラリーと類似写真はすぐに使えます。検索、語彙タグ、分類を初めて実行すると、ブラウザが SigLIP のテキストモデル（約 100 MB）をダウンロードし、その後はキャッシュを使います。

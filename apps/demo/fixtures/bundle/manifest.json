@@ -1,0 +1,805 @@
+{
+  "generatedAt": "2026-08-09T03:15:18.518Z",
+  "items": [
+    {
+      "id": "pets/cat-maine-coon-1.jpg",
+      "file": "pets/cat-maine-coon-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "maine_coon"
+    },
+    {
+      "id": "pets/dog-american-bulldog-1.jpg",
+      "file": "pets/dog-american-bulldog-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "american_bulldog"
+    },
+    {
+      "id": "pets/dog-keeshond-1.jpg",
+      "file": "pets/dog-keeshond-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "keeshond"
+    },
+    {
+      "id": "pets/dog-havanese-1.jpg",
+      "file": "pets/dog-havanese-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "havanese"
+    },
+    {
+      "id": "pets/dog-german-shorthaired-1.jpg",
+      "file": "pets/dog-german-shorthaired-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "german_shorthaired"
+    },
+    {
+      "id": "pets/dog-basset-hound-1.jpg",
+      "file": "pets/dog-basset-hound-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "basset_hound"
+    },
+    {
+      "id": "pets/dog-boxer-1.jpg",
+      "file": "pets/dog-boxer-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "boxer"
+    },
+    {
+      "id": "pets/dog-newfoundland-1.jpg",
+      "file": "pets/dog-newfoundland-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "newfoundland"
+    },
+    {
+      "id": "pets/dog-leonberger-1.jpg",
+      "file": "pets/dog-leonberger-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "leonberger"
+    },
+    {
+      "id": "pets/dog-pug-1.jpg",
+      "file": "pets/dog-pug-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "pug"
+    },
+    {
+      "id": "pets/dog-boxer-2.jpg",
+      "file": "pets/dog-boxer-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "boxer"
+    },
+    {
+      "id": "pets/cat-british-shorthair-1.jpg",
+      "file": "pets/cat-british-shorthair-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "british_shorthair"
+    },
+    {
+      "id": "pets/dog-english-cocker-spaniel-1.jpg",
+      "file": "pets/dog-english-cocker-spaniel-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "english_cocker_spaniel"
+    },
+    {
+      "id": "pets/cat-british-shorthair-2.jpg",
+      "file": "pets/cat-british-shorthair-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "british_shorthair"
+    },
+    {
+      "id": "pets/dog-american-bulldog-2.jpg",
+      "file": "pets/dog-american-bulldog-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "american_bulldog"
+    },
+    {
+      "id": "pets/cat-siamese-1.jpg",
+      "file": "pets/cat-siamese-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "siamese"
+    },
+    {
+      "id": "pets/dog-newfoundland-2.jpg",
+      "file": "pets/dog-newfoundland-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "newfoundland"
+    },
+    {
+      "id": "pets/dog-german-shorthaired-2.jpg",
+      "file": "pets/dog-german-shorthaired-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "german_shorthaired"
+    },
+    {
+      "id": "pets/cat-british-shorthair-3.jpg",
+      "file": "pets/cat-british-shorthair-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "british_shorthair"
+    },
+    {
+      "id": "pets/dog-american-bulldog-3.jpg",
+      "file": "pets/dog-american-bulldog-3.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "american_bulldog"
+    },
+    {
+      "id": "pets/cat-sphynx-1.jpg",
+      "file": "pets/cat-sphynx-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/dog-miniature-pinscher-1.jpg",
+      "file": "pets/dog-miniature-pinscher-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "miniature_pinscher"
+    },
+    {
+      "id": "pets/dog-wheaten-terrier-1.jpg",
+      "file": "pets/dog-wheaten-terrier-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "wheaten_terrier"
+    },
+    {
+      "id": "pets/cat-birman-1.jpg",
+      "file": "pets/cat-birman-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "birman"
+    },
+    {
+      "id": "pets/cat-ragdoll-1.jpg",
+      "file": "pets/cat-ragdoll-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "ragdoll"
+    },
+    {
+      "id": "pets/dog-leonberger-2.jpg",
+      "file": "pets/dog-leonberger-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "leonberger"
+    },
+    {
+      "id": "pets/dog-keeshond-2.jpg",
+      "file": "pets/dog-keeshond-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "keeshond"
+    },
+    {
+      "id": "pets/dog-great-pyrenees-1.jpg",
+      "file": "pets/dog-great-pyrenees-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "great_pyrenees"
+    },
+    {
+      "id": "pets/dog-chihuahua-1.jpg",
+      "file": "pets/dog-chihuahua-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "chihuahua"
+    },
+    {
+      "id": "pets/dog-pomeranian-1.jpg",
+      "file": "pets/dog-pomeranian-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "pomeranian"
+    },
+    {
+      "id": "pets/dog-havanese-2.jpg",
+      "file": "pets/dog-havanese-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "havanese"
+    },
+    {
+      "id": "pets/cat-ragdoll-2.jpg",
+      "file": "pets/cat-ragdoll-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "ragdoll"
+    },
+    {
+      "id": "pets/dog-japanese-chin-1.jpg",
+      "file": "pets/dog-japanese-chin-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "japanese_chin"
+    },
+    {
+      "id": "pets/cat-russian-blue-1.jpg",
+      "file": "pets/cat-russian-blue-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "russian_blue"
+    },
+    {
+      "id": "pets/dog-yorkshire-terrier-1.jpg",
+      "file": "pets/dog-yorkshire-terrier-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "yorkshire_terrier"
+    },
+    {
+      "id": "pets/dog-leonberger-3.jpg",
+      "file": "pets/dog-leonberger-3.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "leonberger"
+    },
+    {
+      "id": "pets/dog-pug-2.jpg",
+      "file": "pets/dog-pug-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "pug"
+    },
+    {
+      "id": "pets/dog-newfoundland-3.jpg",
+      "file": "pets/dog-newfoundland-3.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "newfoundland"
+    },
+    {
+      "id": "pets/dog-japanese-chin-2.jpg",
+      "file": "pets/dog-japanese-chin-2.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "japanese_chin"
+    },
+    {
+      "id": "pets/cat-egyptian-mau-1.jpg",
+      "file": "pets/cat-egyptian-mau-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "egyptian_mau"
+    },
+    {
+      "id": "pets/dog-english-setter-1.jpg",
+      "file": "pets/dog-english-setter-1.jpg",
+      "knownLabel": "dog",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "english_setter"
+    },
+    {
+      "id": "pets/cat-bengal-1.jpg",
+      "file": "pets/cat-bengal-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "bengal"
+    },
+    {
+      "id": "pets/cat-siamese-2.jpg",
+      "file": "pets/cat-siamese-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "siamese"
+    },
+    {
+      "id": "pets/cat-russian-blue-2.jpg",
+      "file": "pets/cat-russian-blue-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "russian_blue"
+    },
+    {
+      "id": "pets/cat-abyssinian-1.jpg",
+      "file": "pets/cat-abyssinian-1.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "abyssinian"
+    },
+    {
+      "id": "pets/cat-egyptian-mau-2.jpg",
+      "file": "pets/cat-egyptian-mau-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "egyptian_mau"
+    },
+    {
+      "id": "pets/cat-sphynx-2.jpg",
+      "file": "pets/cat-sphynx-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/cat-sphynx-3.jpg",
+      "file": "pets/cat-sphynx-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/cat-bengal-2.jpg",
+      "file": "pets/cat-bengal-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "bengal"
+    },
+    {
+      "id": "pets/cat-sphynx-4.jpg",
+      "file": "pets/cat-sphynx-4.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/cat-abyssinian-2.jpg",
+      "file": "pets/cat-abyssinian-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "abyssinian"
+    },
+    {
+      "id": "pets/cat-russian-blue-3.jpg",
+      "file": "pets/cat-russian-blue-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "russian_blue"
+    },
+    {
+      "id": "pets/cat-ragdoll-3.jpg",
+      "file": "pets/cat-ragdoll-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "ragdoll"
+    },
+    {
+      "id": "pets/cat-maine-coon-2.jpg",
+      "file": "pets/cat-maine-coon-2.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "maine_coon"
+    },
+    {
+      "id": "pets/cat-bengal-3.jpg",
+      "file": "pets/cat-bengal-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "bengal"
+    },
+    {
+      "id": "pets/cat-abyssinian-3.jpg",
+      "file": "pets/cat-abyssinian-3.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "abyssinian"
+    },
+    {
+      "id": "pets/cat-russian-blue-4.jpg",
+      "file": "pets/cat-russian-blue-4.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "russian_blue"
+    },
+    {
+      "id": "pets/cat-sphynx-5.jpg",
+      "file": "pets/cat-sphynx-5.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/cat-sphynx-6.jpg",
+      "file": "pets/cat-sphynx-6.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "sphynx"
+    },
+    {
+      "id": "pets/cat-bengal-4.jpg",
+      "file": "pets/cat-bengal-4.jpg",
+      "knownLabel": "cat",
+      "source": "https://huggingface.co/datasets/timm/oxford-iiit-pet",
+      "license": "CC BY-SA 4.0",
+      "breed": "bengal"
+    },
+    {
+      "id": "components/capacitor-1.jpg",
+      "file": "components/capacitor-1.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACapacitors_Various.jpg",
+      "license": "Public domain",
+      "author": "Intiti."
+    },
+    {
+      "id": "components/capacitor-2.jpg",
+      "file": "components/capacitor-2.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADefekter_Kondensator.jpg",
+      "license": "CC BY 3.0",
+      "author": "Joachim K. Löckener"
+    },
+    {
+      "id": "components/capacitor-3.jpg",
+      "file": "components/capacitor-3.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADefekter_Kondesator%2C_Hitzeeinwirkung_auf_Verkabelung.jpg",
+      "license": "CC BY 3.0",
+      "author": "Joachim K. Löckener"
+    },
+    {
+      "id": "components/capacitor-4.jpg",
+      "file": "components/capacitor-4.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AThin_capacitors%2C_IPDiA%2C_high_temperature_capacitors.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Ipdia"
+    },
+    {
+      "id": "components/capacitor-5.jpg",
+      "file": "components/capacitor-5.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AFinished_Wooden_Base.jpeg",
+      "license": "CC BY-SA 3.0",
+      "author": "Mkennedy7536"
+    },
+    {
+      "id": "components/capacitor-6.jpg",
+      "file": "components/capacitor-6.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3APlexiglass_Plate_for_Capacitor.jpeg",
+      "license": "CC BY-SA 3.0",
+      "author": "Mkennedy7536"
+    },
+    {
+      "id": "components/capacitor-7.jpg",
+      "file": "components/capacitor-7.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AWooden_Base_Start.jpeg",
+      "license": "CC BY-SA 3.0",
+      "author": "Mkennedy7536"
+    },
+    {
+      "id": "components/capacitor-8.jpg",
+      "file": "components/capacitor-8.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABase_with_Plexiglass.jpeg",
+      "license": "CC BY-SA 3.0",
+      "author": "Mkennedy7536"
+    },
+    {
+      "id": "components/capacitor-9.jpg",
+      "file": "components/capacitor-9.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AFinished_New_Capacitor.jpeg",
+      "license": "CC BY-SA 3.0",
+      "author": "Mkennedy7536"
+    },
+    {
+      "id": "components/capacitor-10.jpg",
+      "file": "components/capacitor-10.jpg",
+      "knownLabel": "capacitor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALJ_capacitor.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Stivi10"
+    },
+    {
+      "id": "components/resistor-1.jpg",
+      "file": "components/resistor-1.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADeutsches_Museum_-_electric_circuit.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Tiia Monto"
+    },
+    {
+      "id": "components/resistor-2.jpg",
+      "file": "components/resistor-2.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AHUA-171455-Afbeelding_van_enkele_weerstanden_van_de_N.S._te_Culemborg._N.B._De_foto_maakt_deel_uit_van_een_serie_foto's_met_technische_installaties_van_het_seinwezen.jpg",
+      "license": "CC0",
+      "author": "Schaik, W.P.F.M. van (Nederlandse Spoorwegen)"
+    },
+    {
+      "id": "components/resistor-3.jpg",
+      "file": "components/resistor-3.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALeistungswiderstand_hg.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Hannes Grobe"
+    },
+    {
+      "id": "components/resistor-4.jpg",
+      "file": "components/resistor-4.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABallast_resistor.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Chenjudy605"
+    },
+    {
+      "id": "components/resistor-5.jpg",
+      "file": "components/resistor-5.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AA_close-up_of_high-voltage_insulators_and_resistors_within_the_Faraday_cage_for_the_gyrotron_power_supply_Wendelstein_7-X_01.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Siarhei Besarab"
+    },
+    {
+      "id": "components/resistor-6.jpg",
+      "file": "components/resistor-6.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3AA_close-up_of_high-voltage_insulators_and_resistors_within_the_Faraday_cage_for_the_gyrotron_power_supply_Wendelstein_7-X_02.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Siarhei Besarab"
+    },
+    {
+      "id": "components/resistor-7.jpg",
+      "file": "components/resistor-7.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABourns_50k%CE%A9_potentiometer.JPG",
+      "license": "CC BY-SA 3.0",
+      "author": "Dmitry G"
+    },
+    {
+      "id": "components/resistor-8.jpg",
+      "file": "components/resistor-8.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADanger_Shield_v1.0.jpg",
+      "license": "CC BY-SA 2.0",
+      "author": "ッ Zach Hoeken ッ"
+    },
+    {
+      "id": "components/resistor-9.jpg",
+      "file": "components/resistor-9.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3A10k_Ohm_Breadboard_Compatible_Potentiometer.jpg",
+      "license": "CC BY-SA 2.0",
+      "author": "oomlout"
+    },
+    {
+      "id": "components/resistor-10.jpg",
+      "file": "components/resistor-10.jpg",
+      "knownLabel": "resistor",
+      "source": "https://commons.wikimedia.org/wiki/File%3A10K_Potentiomer_(x3).jpg",
+      "license": "CC BY-SA 2.0",
+      "author": "oomlout"
+    },
+    {
+      "id": "components/connector-1.jpg",
+      "file": "components/connector-1.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACIR_Connector.jpg",
+      "license": "Public domain",
+      "author": "ITT Cannon"
+    },
+    {
+      "id": "components/connector-2.jpg",
+      "file": "components/connector-2.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADadesauxiliars.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Jordigelabert"
+    },
+    {
+      "id": "components/connector-3.jpg",
+      "file": "components/connector-3.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3AClose-up_of_Butt_Connectors_for_ESC_and_Motor.JPG",
+      "license": "CC BY-SA 3.0",
+      "author": "Shatton8111"
+    },
+    {
+      "id": "components/connector-4.jpg",
+      "file": "components/connector-4.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3AConnect_wires_to_ESC.JPG",
+      "license": "CC BY-SA 3.0",
+      "author": "Amirreza Saharkhiz"
+    },
+    {
+      "id": "components/connector-5.jpg",
+      "file": "components/connector-5.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3AConnect_to_the_power_supply.JPG",
+      "license": "CC BY-SA 3.0",
+      "author": "Amirreza Saharkhiz"
+    },
+    {
+      "id": "components/connector-6.jpg",
+      "file": "components/connector-6.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACheltenham_Racecourse_railway_station_MMB_04.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "mattbuck ( category )"
+    },
+    {
+      "id": "components/connector-7.jpg",
+      "file": "components/connector-7.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACable_headend_modulator.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Sattmaster ( talk )"
+    },
+    {
+      "id": "components/connector-8.jpg",
+      "file": "components/connector-8.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3AAnderson_connector1.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Shengtaoliu"
+    },
+    {
+      "id": "components/connector-9.jpg",
+      "file": "components/connector-9.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3A2013_04_14_Re_420_213_LION_04_ROK_0625.JPG",
+      "license": "CC BY-SA 3.0",
+      "author": "Lord Koxinga"
+    },
+    {
+      "id": "components/connector-10.jpg",
+      "file": "components/connector-10.jpg",
+      "knownLabel": "connector",
+      "source": "https://commons.wikimedia.org/wiki/File%3A5pinRelimateConnectorMaleFemale.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Pradeep717"
+    },
+    {
+      "id": "components/led-1.jpg",
+      "file": "components/led-1.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3AElectronic_component_led_displays.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "me"
+    },
+    {
+      "id": "components/led-2.jpg",
+      "file": "components/led-2.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3AReflections_1090029.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Nevit Dilmen"
+    },
+    {
+      "id": "components/led-3.jpg",
+      "file": "components/led-3.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ARadioamateur_-_ER_LED_visible.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Roland Brierre"
+    },
+    {
+      "id": "components/led-4.jpg",
+      "file": "components/led-4.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASiC_LED_historic.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Biolippi"
+    },
+    {
+      "id": "components/led-5.jpg",
+      "file": "components/led-5.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALuxeon.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "CaZaE"
+    },
+    {
+      "id": "components/led-6.jpg",
+      "file": "components/led-6.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALED_Juggling_Ball_MicroCT_Reconstruction.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "SecretDisc"
+    },
+    {
+      "id": "components/led-7.jpg",
+      "file": "components/led-7.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABico64_avec_PICkit2.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Marc0NICOLE"
+    },
+    {
+      "id": "components/led-8.jpg",
+      "file": "components/led-8.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALED_T-shirt.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Finstad"
+    },
+    {
+      "id": "components/led-9.jpg",
+      "file": "components/led-9.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALED_Querschnitt_bestromt.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Urgent necessity"
+    },
+    {
+      "id": "components/led-10.jpg",
+      "file": "components/led-10.jpg",
+      "knownLabel": "led",
+      "source": "https://commons.wikimedia.org/wiki/File%3AHugging_Diode_(6062479294).jpg",
+      "license": "CC BY-SA 2.0",
+      "author": "Alberto Alonso G from London, United Kingdom"
+    }
+  ]
+}

@@ -47,5 +47,7 @@ test("zfb production output preserves the island and root asset contract", async
 
   await fs.access(path.join(ROOT, "dist", "data", "meta.json"));
   await fs.access(path.join(ROOT, "dist", "data", "embeddings.bin"));
-  await fs.access(path.join(ROOT, "dist", "data", "thumbs", "cat", "cat-01.png.jpg"));
+  await fs.access(path.join(ROOT, "dist", "data", "manifest.json"));
+  await fs.access(path.join(ROOT, "dist", "data", "CREDITS.md"));
+  await fs.access(path.join(ROOT, "dist", "data", "thumbs", "pets", "cat-abyssinian-1.jpg.jpg"));
 });
