@@ -32,11 +32,12 @@ export function VocabTagsView({ ctx }: { ctx: DemoContext }) {
   const [vocabVectors, setVocabVectors] = useState<Map<string, Vector> | null>(null);
   // A threshold is a per-dataset knob, and the two spaces are not comparable:
   // the fixture's fake space separates at ~0.99 vs ~0.3, while real SigLIP
-  // similarities sit far lower — which is why core's own default is 0.2.
+  // similarities sit far lower. Match the CLI's usable real-model starting
+  // point so the first score does not silently filter every photo out.
   // Starting each mode at a value that is sensible for it beats starting both
   // at one value that is wrong for one of them.
   const [threshold, setThreshold] = useState(
-    embedderModeFor(index.meta.modelId) === "mock" ? 0.35 : 0.2,
+    embedderModeFor(index.meta.modelId) === "mock" ? 0.35 : 0.04,
   );
   const [showShare, setShowShare] = useState(false);
   const [busy, setBusy] = useState(false);
