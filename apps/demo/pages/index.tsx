@@ -9,10 +9,10 @@ export default function DemoPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta
           name="description"
-          content="Local image vector search demo: search photos by description, auto-categorize by words, and attach your own tags."
+          content="A public AI photo library for uploading, human tagging, and tiered search."
         />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <title>Photo vector search — demo</title>
+        <title>Public AI photo library</title>
       </head>
       <body>
         {/* zfb's marker is transformed before React runs; its intentionally
@@ -21,7 +21,7 @@ export default function DemoPage() {
         <Island
           ssrFallback={
             <main className="grid min-h-screen place-items-center px-md py-lg">
-              <p className="text-muted">Loading the index bundle&hellip;</p>
+              <p className="text-muted">Loading the photo library&hellip;</p>
             </main>
           }
         >

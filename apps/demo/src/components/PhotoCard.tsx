@@ -1,99 +1,112 @@
-import type { IndexItem } from "../generated/core-browser.mjs";
-import type { ReactNode } from "react";
-import { formatScore, itemLabel } from "../lib/format";
-import { AttributionPopover } from "./AttributionPopover";
-import { TagChip } from "./TagChip";
-
-export interface PhotoCardProps {
-  item: IndexItem;
-  thumbUrl: string;
-  tags?: readonly string[];
-  /** Subset of `tags` the user added themselves — index tags are not removable from the demo UI. */
-  removableTags?: readonly string[];
-  score?: number;
-  selected?: boolean;
-  /** Verb used in the image button's accessible name — the click means different things per view. */
-  action?: string;
-  badge?: ReactNode;
-  footer?: ReactNode;
-  onActivate?: (id: string) => void;
-  onRemoveTag?: (id: string, tag: string) => void;
-}
+import type { PhotoSummary } from "../worker/contracts/domain";
 
 export function PhotoCard({
-  item,
-  thumbUrl,
-  tags = [],
-  removableTags = [],
-  score,
-  selected = false,
-  action = "Show photos similar to",
-  badge,
-  footer,
-  onActivate,
+  photo,
+  selected,
+  disabled,
+  onSelect,
   onRemoveTag,
-}: PhotoCardProps) {
-  const label = itemLabel(item);
-
+}: {
+  photo: PhotoSummary;
+  selected: boolean;
+  disabled: boolean;
+  onSelect(photoId: string): void;
+  onRemoveTag(photoId: string, tag: string): void;
+}) {
   return (
-    <figure
-      className={`m-0 flex flex-col gap-xs rounded-md border bg-surface p-xs transition-colors motion-reduce:transition-none ${selected ? "border-accent shadow-selected" : "border-line"}`}
+    <article
+      className={`min-w-0 overflow-hidden rounded-lg border bg-surface ${selected ? "border-accent shadow-selected" : "border-line"}`}
     >
-      <div className="relative">
-        <button
-          type="button"
-          className="block min-h-control w-full cursor-pointer rounded-sm border-0 bg-transparent p-0 active:opacity-80"
-          aria-pressed={onActivate ? selected : undefined}
-          aria-label={`${action} ${label}`}
-          onClick={() => onActivate?.(item.id)}
-        >
-          {/* Dimensions match the fixture thumbnails so the grid never reflows as
-              images decode; object-fit absorbs any other source ratio. */}
-          <img
-            className="aspect-square h-auto w-full rounded-sm bg-sunken object-cover"
-            src={thumbUrl}
-            alt=""
-            width={192}
-            height={192}
-            loading="lazy"
-            decoding="async"
+      <div className="relative aspect-[4/3] bg-sunken">
+        <img
+          className="h-full w-full object-cover"
+          src={photo.mediaUrl}
+          alt="Uploaded library photo"
+          width={photo.width}
+          height={photo.height}
+          loading="lazy"
+        />
+        <label className="absolute top-xs left-xs flex min-h-control min-w-control cursor-pointer items-center justify-center rounded-md bg-surface/95 px-sm font-semibold shadow-sm">
+          <input
+            className="mr-xs size-md accent-accent"
+            type="checkbox"
+            checked={selected}
+            onChange={() => onSelect(photo.id)}
+            aria-label={`Select photo ${photo.id}`}
           />
-        </button>
-        <AttributionPopover item={item} />
-        {badge !== undefined && (
-          <span className="absolute top-3xs left-3xs rounded-pill border border-line bg-surface px-xs py-3xs text-2xs font-semibold">
-            {badge}
-          </span>
+          Select
+        </label>
+      </div>
+      <div className="grid gap-md p-md">
+        <div>
+          <h3 className="m-0 text-sm font-semibold">AI suggested words</h3>
+          <div className="mt-xs flex flex-wrap gap-xs" aria-label="AI suggested words">
+            {photo.aiWords.length ? (
+              photo.aiWords.map((word) => (
+                <span
+                  key={`${word.modelRunId}:${word.normalizedWord}`}
+                  className="rounded-pill border border-ai-line bg-ai-soft px-sm py-3xs text-xs text-ai-ink"
+                >
+                  AI · {word.word}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-muted">No AI words yet</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <h3 className="m-0 text-sm font-semibold">Human tags</h3>
+          <div className="mt-xs flex flex-wrap gap-xs" aria-label="Human tags">
+            {photo.humanTags.length ? (
+              photo.humanTags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex min-h-control items-center rounded-pill border border-human-line bg-human-soft pl-sm text-xs text-human-ink"
+                >
+                  Human · {tag.name}
+                  <button
+                    type="button"
+                    className="ml-3xs min-h-control min-w-control rounded-pill font-semibold disabled:cursor-not-allowed disabled:opacity-50 hover-safe:bg-surface focus-visible:outline-2"
+                    disabled={disabled}
+                    onClick={() => onRemoveTag(photo.id, tag.name)}
+                    aria-label={`Remove human tag ${tag.name} from photo ${photo.id}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-muted">No human tags</span>
+            )}
+          </div>
+        </div>
+        {photo.attribution && (
+          <p className="m-0 text-xs text-muted">
+            Source:{" "}
+            {photo.attribution.sourceUrl ? (
+              <a className="underline" href={photo.attribution.sourceUrl}>
+                {photo.attribution.authorName ?? "original source"}
+              </a>
+            ) : (
+              (photo.attribution.authorName ?? "seed collection")
+            )}
+            {photo.attribution.licenseName ? (
+              <>
+                {" "}
+                ·{" "}
+                {photo.attribution.licenseUrl ? (
+                  <a className="underline" href={photo.attribution.licenseUrl}>
+                    {photo.attribution.licenseName}
+                  </a>
+                ) : (
+                  photo.attribution.licenseName
+                )}
+              </>
+            ) : null}
+          </p>
         )}
       </div>
-
-      <figcaption className="flex items-baseline justify-between gap-xs text-xs text-muted">
-        <span className="truncate" title={item.file}>
-          {label}
-        </span>
-        {score !== undefined && (
-          <span className="font-semibold text-ink tabular-nums">{formatScore(score)}</span>
-        )}
-      </figcaption>
-
-      {tags.length > 0 && (
-        <ul className="m-0 flex list-none flex-wrap gap-3xs p-0">
-          {tags.map((tag) => (
-            <li key={tag}>
-              <TagChip
-                tag={tag}
-                onRemove={
-                  onRemoveTag && removableTags.includes(tag)
-                    ? () => onRemoveTag(item.id, tag)
-                    : undefined
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {footer}
-    </figure>
+    </article>
   );
 }
