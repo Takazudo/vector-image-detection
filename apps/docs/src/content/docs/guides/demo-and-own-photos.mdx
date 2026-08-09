@@ -21,7 +21,7 @@ ACK_RETAINED_IMAGE_METADATA=I_ACKNOWLEDGE_RETAINED_IMAGE_METADATA
 ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
 ```
 
-9. **認証済み preflight を pass させる。** `DEMO_PREFLIGHT_URL` と secret `DEMO_PREFLIGHT_TOKEN` を用意し、`pnpm run cloudflare:demo-preflight` を実行します。`/api/v1/operator/readiness` がすべての required check を `pass`、production、public writes enabled、正しいモデル/Vectorize invariant と返さない限り CI の demo deploy は停止します。
+9. **認証済み preflight を pass させる。** provisioning 中は repository variable `DEMO_DEPLOYMENT_ENABLED` を unset のままにし、demo deploy job を安全に skip させます。resource、read-only Worker、secret、acknowledgement がすべて用意できた最後の段階でだけ `DEMO_DEPLOYMENT_ENABLED=true` を設定します。`DEMO_PREFLIGHT_URL` と secret `DEMO_PREFLIGHT_TOKEN` を用意し、`pnpm run cloudflare:demo-preflight` を実行します。`/api/v1/operator/readiness` がすべての required check を `pass`、production、public writes enabled、正しいモデル/Vectorize invariant と返さない限り CI の demo deploy は停止します。
 10. **public writes を有効化する。** preflight と acknowledgement 後にのみ generated production config が true を設定し deploy します。deploy 後は一つの upload、処理状態、media authorization、human tag exact search、AI-word exact search、related degradation を運用者が記録して確認します。この live smoke test は provisioning 前には「完了」と宣言しません。
 
 Cloudflare CLI は認証済み account を操作します。`wrangler r2 bucket create <name>`、`wrangler queues create <name>`、`wrangler vectorize create <name> --dimensions=768 --metric=cosine` の対象名は各環境専用にし、production と local/preview を混ぜません。Queue/DLQ の consumer 構成は Wrangler config でも確認します。

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -10,6 +11,17 @@ import {
 } from "./demo-preflight.mjs";
 
 const acknowledged = { ...REQUIRED_ACKNOWLEDGEMENTS };
+
+test("demo deployment remains an explicit repository-variable opt-in", async () => {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/deploy-cloudflare.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    workflow,
+    /deploy-demo:\n\s+#[^\n]+\n\s+#[^\n]+\n\s+if: \$\{\{ vars\.DEMO_DEPLOYMENT_ENABLED == 'true' \}\}/,
+  );
+});
 
 test("demo preflight requires every explicit risk acknowledgement", () => {
   assert.throws(() => validateAcknowledgements({}), /ACK_ANONYMOUS_PUBLIC_WRITES/);
