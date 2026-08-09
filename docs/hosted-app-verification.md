@@ -1,5 +1,10 @@
 # Hosted apps verification record — Issue #27
 
+> Historical archive (2026-08-08): this report describes the retired
+> fixture-backed/browser-model demo and is not current release or operator
+> guidance. For the hosted photo library, use the root README,
+> `apps/demo/README.md`, and the docs-site operator guide instead.
+
 This record covers the integrated documentation, demo, and Cloudflare static
 asset delivery contract from a clean tracked workspace. It is intentionally
 offline: no model weights, live VLM calls, authenticated Cloudflare preflight,
