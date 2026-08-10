@@ -4,19 +4,21 @@ description: local/remote を取り違えないための build、migration、dry
 sidebar_position: 2
 ---
 
-| 目的                        | 実行するコマンド                                                                                         | remote への作用                    |
-| --------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| local D1 migration          | `pnpm --filter @vector-image-detection/demo run db:migrate:local`                                        | なし                               |
-| docs 構文/リンク            | `pnpm --filter @vector-image-detection/docs run check`                                                   | なし                               |
-| docs build                  | `pnpm --filter @vector-image-detection/docs run build`                                                   | なし                               |
-| local credited seed import  | `pnpm run demo:seed:local`                                                                               | なし（local D1/R2 test resources） |
-| placeholder deploy dry-run  | `pnpm --filter @vector-image-detection/demo run deploy:dry-run:production`                               | なし                               |
-| remote D1 migration         | `pnpm exec wrangler d1 migrations apply <d1-name> --remote --config apps/demo/wrangler.production.jsonc` | 指定 D1 のみ                       |
-| authenticated release gate  | `pnpm run cloudflare:demo-preflight`                                                                     | readiness GET のみ                 |
-| production config の render | `pnpm --filter @vector-image-detection/demo run render:production`                                       | なし（生成 file のみ）             |
-| rendered demo deployment    | GitHub Actions の `deploy-demo` job のみ                                                                 | 指定 production Worker             |
+| 目的                        | 実行するコマンド                                                                                                                                        | remote への作用                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| local D1 migration          | `pnpm --filter @vector-image-detection/demo run db:migrate:local`                                                                                       | なし                               |
+| docs 構文/リンク            | `pnpm --filter @vector-image-detection/docs run check`                                                                                                  | なし                               |
+| docs build                  | `pnpm --filter @vector-image-detection/docs run build`                                                                                                  | なし                               |
+| local credited seed import  | `pnpm run demo:seed:local`                                                                                                                              | なし（local D1/R2 test resources） |
+| placeholder deploy dry-run  | `pnpm --filter @vector-image-detection/demo run deploy:dry-run:production`                                                                              | なし                               |
+| production config の render | `pnpm --filter @vector-image-detection/demo run render:production`                                                                                      | なし（生成 file のみ）             |
+| remote D1 migration         | render の直後に `pnpm --filter @vector-image-detection/demo exec wrangler d1 migrations apply DB --remote --config .wrangler.production.generated.json` | 指定 D1 のみ                       |
+| authenticated release gate  | `pnpm run cloudflare:demo-preflight`                                                                                                                    | readiness GET のみ                 |
+| rendered demo deployment    | GitHub Actions の `deploy-demo` job のみ                                                                                                                | 指定 production Worker             |
 
 rendered demo deployment に手元用の script はありません。実 deploy は `deploy-demo` job が `wrangler deploy --config .wrangler.production.generated.json --secrets-file <RUNNER_TEMP の file>` として実行します。secrets file なしで deploy すると access gate secret を持たない Worker になり、production では serve を拒否するため、この経路は CI に限定しています。
+
+remote D1 migration は必ず render 後の `.wrangler.production.generated.json` に対して実行します。committed の `wrangler.production.jsonc` を直接 `--config` に渡してはいけません — placeholder の `database_id`（`00000000-0000-0000-0000-000000000000`）が非空なので、wrangler の D1 lookup（`getDatabaseByNameOrBinding`/`hasUuid`）は account への名前解決を一切せずこの placeholder UUID をそのまま使い、`--remote` を付けても実 account の DB には届かず失敗します。詳しい手順（render に必要な 10 個の env var を含む）は [operator runbook](https://github.com/Takazudo/vector-image-detection/blob/main/docs/enable-public-uploads-runbook.md) を参照してください。
 
 `--remote` を含む D1 command と明示した resource name は実 account に作用します。production name を shell history、issue、docs、source にハードコードしません。`wrangler vectorize create <name> --dimensions=768 --metric=cosine` の metric/dimension は作成後に変更できないため、モデルの 768-dimensional embedding と一致することを先に確認してください。
 
