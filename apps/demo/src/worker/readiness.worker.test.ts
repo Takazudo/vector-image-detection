@@ -1,15 +1,16 @@
 import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
+import { AUTH_COOKIE_NAME } from "./auth-gate";
 import { MODEL_CONFIG, type RuntimeSettings } from "./config";
 import type { ReadinessCheck, ReadinessCheckName, ReadinessResponse } from "./contracts/api";
 import type { PlatformProviders } from "./providers";
 import { configurationReadiness, deepReadiness } from "./readiness";
 
-// wrangler.test.jsonc resolves the AUTH_PASSWORD / AUTH_PASS_COOKIE secrets from
-// vitest.worker.config.ts, which sets both to this literal for tests.
+/** From wrangler.test.jsonc's OPERATOR_PREFLIGHT_TOKEN var. */
 const OPERATOR_TOKEN = "worker-test-only";
-const GATE_COOKIE = "vid_demo_pass=worker-test-only";
+/** AUTH_PASS_COOKIE is resolved from vitest.worker.config.ts, which sets this literal. */
+const GATE_COOKIE = `${AUTH_COOKIE_NAME}=worker-test-only`;
 
 /** Kept in sync with EXPECTED_MIGRATION in readiness.ts. */
 const APPLIED_MIGRATION = "0001_public_photo_library.sql";
