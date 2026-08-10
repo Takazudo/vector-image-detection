@@ -11,3 +11,4 @@ test-results/
 *.tsbuildinfo
 .wrangler/
 .wrangler.production.generated.json
+.env
