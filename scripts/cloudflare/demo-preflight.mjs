@@ -121,6 +121,27 @@ export function bootstrapResponseReason(status, body) {
   return undefined;
 }
 
+/**
+ * Extracts the failing checks from a readiness body so a non-ok response
+ * explains itself in the CI log. Returns "" for anything that is not a
+ * readiness document — the caller still reports the status code.
+ */
+export function failingCheckSummary(body) {
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return "";
+  }
+  if (!Array.isArray(parsed?.checks)) return "";
+  const failing = parsed.checks.filter((entry) => entry?.status !== "pass");
+  if (failing.length === 0) return "";
+  const rendered = failing
+    .map((entry) => `${entry.name} (${entry.status})${entry.detail ? `: ${entry.detail}` : ""}`)
+    .join("; ");
+  return ` Failing checks: ${rendered}`;
+}
+
 function positiveInteger(value, fallback) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -209,9 +230,15 @@ export async function demoPreflight({
         // post-deploy gate still rejects it.
         unreachableReason = `the target answered HTTP ${response.status} with a non-JSON body, so this Worker's readiness endpoint is not live at the target yet`;
       } else {
-        unreachableReason = bootstrapResponseReason(response.status, await response.text());
+        const body = await response.text();
+        unreachableReason = bootstrapResponseReason(response.status, body);
         if (!unreachableReason) {
-          throw new Error(`Production Worker readiness request failed (${response.status}).`);
+          // A 503 readiness response carries the check list that explains it.
+          // Discarding it turned every failure into a live debugging session,
+          // so surface the failing check names and their details here.
+          throw new Error(
+            `Production Worker readiness request failed (${response.status}).${failingCheckSummary(body)}`,
+          );
         }
       }
     }

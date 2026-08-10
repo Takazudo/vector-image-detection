@@ -125,12 +125,32 @@ export async function deepReadiness(providers: PlatformProviders): Promise<Readi
   );
 
   await appendAsyncCheck(checks, "vectorize", async () => {
-    const description = await providers.vectorize.describe();
-    return "dimensions" in description.config &&
-      description.config.dimensions === MODEL_CONFIG.vectorDimensions &&
-      description.config.metric === MODEL_CONFIG.vectorMetric
-      ? `Vectorize reports ${MODEL_CONFIG.vectorDimensions} dimensions with cosine distance.`
-      : null;
+    // Vectorize V1 and V2 return different shapes from describe(): V1 nests the
+    // index configuration under `config` ({ dimensions, metric }), V2 reports
+    // `dimensions` at the top level and omits the distance metric entirely.
+    // The binding is typed as V1 (`VectorizeIndex`) but a V2 index answers with
+    // the V2 shape, so reaching into `.config` unconditionally throws a
+    // TypeError against real production — and the throw surfaced only as a
+    // generic "binding check failed". Read whichever shape is actually present.
+    const description: VectorizeIndexDetails | VectorizeIndexInfo =
+      await providers.vectorize.describe();
+    // Two narrowings are needed: V1-vs-V2 at the top level, then — within V1 —
+    // the dimension-config vs preset-config union that `config` can hold.
+    const config = "config" in description ? description.config : undefined;
+    const sized = config && "dimensions" in config ? config : undefined;
+    const dimensions =
+      sized?.dimensions ?? ("dimensions" in description ? description.dimensions : undefined);
+    const metric = sized?.metric;
+
+    if (dimensions !== MODEL_CONFIG.vectorDimensions) return null;
+    // V2 does not expose the metric at runtime. It is fixed at index creation
+    // and cannot drift, so it is asserted at provisioning time (see the
+    // operator runbook) rather than here — only V1 can be checked live.
+    if (metric !== undefined && metric !== MODEL_CONFIG.vectorMetric) return null;
+
+    return metric === undefined
+      ? `Vectorize reports ${MODEL_CONFIG.vectorDimensions} dimensions.`
+      : `Vectorize reports ${MODEL_CONFIG.vectorDimensions} dimensions with ${MODEL_CONFIG.vectorMetric} distance.`;
   });
   await appendAsyncCheck(checks, "rate_limit", async () => {
     await providers.rateLimit.limit({ key: `operator-readiness:${crypto.randomUUID()}` });
@@ -172,8 +192,13 @@ async function appendAsyncCheck(
     checks.push(
       check(name, detail !== null, detail ?? `${name} returned unexpected configuration.`),
     );
-  } catch {
-    checks.push(check(name, false, `${name} binding check failed.`));
+  } catch (error) {
+    // Include the thrown message. This runs only in deepReadiness, which is
+    // bearer-authenticated, so an operator sees the cause instead of a bare
+    // "binding check failed" that forces a live debugging session — exactly
+    // what a swallowed Vectorize TypeError previously cost.
+    const cause = error instanceof Error ? error.message : String(error);
+    checks.push(check(name, false, `${name} binding check failed: ${cause}`));
   }
 }
 
