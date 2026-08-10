@@ -136,6 +136,61 @@ describe("deep operator readiness", () => {
 
     expect(failedChecks(response)).toEqual(["vectorize"]);
   });
+
+  // Vectorize V2's describe() reports `dimensions` at the top level and returns
+  // no `config` object at all. Every fake in this file used to return only the
+  // V1 shape, so reaching into `.config` typechecked, passed the suite, and threw
+  // a TypeError against the real production binding — surfacing as an opaque
+  // "vectorize binding check failed" that took a live debugging session to find.
+  it("accepts the Vectorize V2 describe() shape, which has no config object", async () => {
+    const v2 = {
+      ...healthyBindings(),
+      vectorize: {
+        describe: async () => ({
+          dimensions: MODEL_CONFIG.vectorDimensions,
+          vectorCount: 0,
+          processedUpToDatetime: 0,
+          processedUpToMutation: 0,
+        }),
+      },
+    };
+
+    const response = await deepReadiness(providers(enabledProduction, v2));
+
+    expect(failedChecks(response)).toEqual([]);
+    expect(checkOf(response, "vectorize").status).toBe("pass");
+  });
+
+  it("fails a V2 index whose dimensions drift, even without a config object", async () => {
+    const v2Drifted = {
+      ...healthyBindings(),
+      vectorize: {
+        describe: async () => ({ dimensions: 1_024, vectorCount: 0 }),
+      },
+    };
+
+    const response = await deepReadiness(providers(enabledProduction, v2Drifted));
+
+    expect(failedChecks(response)).toEqual(["vectorize"]);
+  });
+
+  it("reports the thrown cause when a binding check throws", async () => {
+    const exploding = {
+      ...healthyBindings(),
+      vectorize: {
+        describe: async () => {
+          throw new TypeError("Cannot use 'in' operator to search for 'dimensions' in undefined");
+        },
+      },
+    };
+
+    const response = await deepReadiness(providers(enabledProduction, exploding));
+
+    expect(failedChecks(response)).toEqual(["vectorize"]);
+    // The cause must reach the operator — a bare "binding check failed" is what
+    // made the original failure undiagnosable from the CI log alone.
+    expect(checkOf(response, "vectorize").detail).toContain("in' operator");
+  });
 });
 
 describe("readiness wiring", () => {

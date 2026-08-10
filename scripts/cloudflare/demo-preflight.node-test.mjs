@@ -299,6 +299,49 @@ test("a 200 that is not JSON still fails the strict post-deploy gate", async () 
   );
 });
 
+test("a failing readiness response explains itself in the error message", async () => {
+  // A 503 readiness body carries the check list that explains it. Discarding it
+  // is what turned a single failing check into a live debugging session.
+  await assert.rejects(
+    demoPreflight({
+      environment: bootstrapEnvironment,
+      fetchImpl: async () =>
+        Response.json(
+          {
+            status: "not_ready",
+            environment: "production",
+            publicWritesEnabled: true,
+            models: EXPECTED_MODELS,
+            checks: [
+              { name: "d1", status: "pass" },
+              { name: "vectorize", status: "fail", detail: "vectorize binding check failed: boom" },
+            ],
+          },
+          { status: 503 },
+        ),
+      ...silent,
+    }),
+    (error) => {
+      assert.match(error.message, /readiness request failed \(503\)/);
+      assert.match(error.message, /vectorize \(fail\)/);
+      assert.match(error.message, /boom/);
+      assert.doesNotMatch(error.message, /d1/); // passing checks are not noise
+      return true;
+    },
+  );
+});
+
+test("a non-readiness error body does not break the error message", async () => {
+  await assert.rejects(
+    demoPreflight({
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
+      fetchImpl: async () => new Response("upstream exploded", { status: 502 }),
+      ...silent,
+    }),
+    /readiness request failed \(502\)\.$/,
+  );
+});
+
 test("pre-deploy accepts a deployed Worker that predates a newly required check", async () => {
   // The gate interrogates the Worker already running, which cannot report a
   // check the release being shipped introduces. Validating the old version
