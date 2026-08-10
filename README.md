@@ -10,6 +10,8 @@ The production Worker is deliberately configured with public writes **off**. Ena
 
 The release procedure requires explicit acknowledgements for all three facts, successful authenticated binding/readiness preflight, and a separate operator decision to turn on public writes. Never put Cloudflare tokens, account IDs, resource IDs, or preflight tokens in this repository or client code.
 
+The deployed site also sits behind a password wall (`AUTH_PASSWORD` / `AUTH_PASS_COOKIE`) as a precondition of enabling public writes: it is what keeps a bootstrap deploy from being publicly reachable before its post-deploy readiness check has run. The authenticated `/api/v1/operator/**` endpoints (readiness, purge) are exempt from that wall — their own bearer-token check is strictly stronger, and they must stay reachable even when the wall is misconfigured so readiness can report the problem.
+
 ## Hosted architecture
 
 ```mermaid
@@ -59,6 +61,8 @@ Provider fakes cover the Worker tests. A credential-free run does not simulate o
 ## Provision and release later
 
 Do not provision or deploy public writes from this README alone. Follow the ordered [Japanese operator guide](apps/docs/src/content/docs/guides/demo-and-own-photos.mdx), including least-privilege tokens, remote-only migration commands, a rendered production config, authenticated preflight, and all three acknowledgements. Docs deploy independently; demo deployment remains blocked until `cloudflare:demo-preflight` succeeds.
+
+For the exact, ordered, copy-pasteable list of remaining human actions — provisioning, repository variables and secrets, the remote D1 migration, and turning on `DEMO_DEPLOYMENT_ENABLED` — see the [operator runbook](docs/enable-public-uploads-runbook.md). It deliberately stops short of performing any of those actions itself.
 
 ## Explicit seed collection
 

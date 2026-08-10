@@ -57,7 +57,9 @@ pnpm --filter @vector-image-detection/demo run deploy:dry-run:production
 
 ## Later production provisioning and release
 
-The checked-in production config contains inert placeholders and `PUBLIC_WRITES_ENABLED: "false"`. Never edit it with a real account ID or resource name. Use CI/release environment variables to render `.wrangler.production.generated.json` only after an operator has provisioned the resources named in the [operator guide](../docs/src/content/docs/guides/demo-and-own-photos.mdx).
+The checked-in production config contains inert placeholders and `PUBLIC_WRITES_ENABLED: "false"`. Never edit it with a real account ID or resource name. Use CI/release environment variables to render `.wrangler.production.generated.json` only after an operator has provisioned the resources named in the [operator guide](../docs/src/content/docs/guides/demo-and-own-photos.mdx). For the exact, ordered, copy-pasteable list of remaining human actions, see the [operator runbook](../../docs/enable-public-uploads-runbook.md).
+
+The password wall (`AUTH_PASSWORD` / `AUTH_PASS_COOKIE`, below) is a precondition of turning public writes on, not an independent feature: it is what keeps a bootstrap deploy from being publicly reachable before its post-deploy readiness gate has run. The `/api/v1/operator/**` prefix (readiness, purge) is exempt from that gate — see `isOperatorPath` / `OPERATOR_PATH_PREFIX` in `src/worker/router.ts`. The exemption exists because its own bearer-token check is strictly stronger than the password cookie, because the preflight and purge tooling both depend on reaching it, and because it must keep working even when the password gate itself is misconfigured, so readiness can report exactly that.
 
 The deploy workflow has two independent jobs:
 
@@ -71,6 +73,8 @@ The demo job renders `.wrangler.production.generated.json` once and both dry-run
 The pre-deploy gate interrogates the _already deployed_ Worker, which does not exist before the first-ever deploy. It is therefore bootstrap-tolerant: a target that does not resolve, refuses the connection, or answers a Cloudflare 1000-series edge error downgrades to a `::warning::` and the job continues. A target that answers—including a `401`, or a `200` reporting a failed check—still fails the job exactly as before, so nothing changes once the demo is live.
 
 On a bootstrap run this means traffic switches before verification. The password wall is the compensating control (nothing is publicly reachable even if the deploy is wrong) and `DEMO_DEPLOYMENT_ENABLED` remains the outer human opt-in. The post-deploy gate is strict, mandatory, and prints the `wrangler rollback` command when it fails.
+
+"Bootstrap-tolerant" only covers a target that is _unreachable_. If a Worker is already answering at `DEMO_PREFLIGHT_URL` — including a stale, pre-epic deployment that predates this JSON API — the pre-deploy gate gets a real response, fails to parse it as the expected JSON, and hard-fails before the real deploy step runs. The [operator runbook](../../docs/enable-public-uploads-runbook.md) has the check and the resolution for that case.
 
 ### Deployment secrets
 
