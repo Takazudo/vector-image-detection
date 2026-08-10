@@ -16,11 +16,15 @@ migration, or flipped `DEMO_DEPLOYMENT_ENABLED`. Every one of those actions eith
 billable Cloudflare resource or turns on anonymous public writes on a public internet host, so
 they belong to a human operator making an explicit, informed decision — not to automation.
 
-`AUTH_PASSWORD`, `AUTH_PASS_COOKIE`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` already
-exist as repository secrets (verified with `gh secret list --repo zudolab/vector-image-detection`
-while writing this runbook). Do not recreate them — the password wall is already live and the
-Cloudflare API token already has whatever scope it was issued with. Nothing below asks you to
-touch those four.
+**The exact gap, stated plainly:** `gh variable list --repo zudolab/vector-image-detection` returns
+empty — zero repository variables exist yet. The `deploy-demo` job needs eleven of them (the seven
+`DEMO_*` resource names in step 1, the three `ACK_*` sentinels in step 2, and `DEMO_PREFLIGHT_URL`
+in step 3) before `DEMO_DEPLOYMENT_ENABLED` — a twelfth variable — can safely go to `true` as the
+very last step. `gh secret list --repo zudolab/vector-image-detection` returns exactly four:
+`AUTH_PASSWORD`, `AUTH_PASS_COOKIE`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` (verified
+while writing this runbook). Do not recreate those four — the password wall is already live and
+the Cloudflare API token already has whatever scope it was issued with. The only secret you still
+need to create is `DEMO_PREFLIGHT_TOKEN` (step 4).
 
 ## 0. Identify or provision the account resources
 
@@ -117,12 +121,27 @@ configured in `apps/demo/wrangler.production.jsonc`'s `routes`:
 gh variable set DEMO_PREFLIGHT_URL --repo zudolab/vector-image-detection --body "https://vector-image-detection.takazudomodular.com"
 ```
 
+A missing `DEMO_PREFLIGHT_URL` or `DEMO_PREFLIGHT_TOKEN` (step 4) fails the pre-deploy gate
+_before anything deploys_, and deliberately isn't bootstrap-tolerated — see
+`scripts/cloudflare/demo-preflight.mjs`: `"DEMO_PREFLIGHT_URL and DEMO_PREFLIGHT_TOKEN are
+required."` is thrown outright, before the network call that bootstrap tolerance even applies to.
+A config error is not evidence about whether a Worker exists, so if the failing job's log says
+exactly that, the fix is "set the missing variable/secret," not "investigate the deploy."
+
 ## 4. Generate and set the `DEMO_PREFLIGHT_TOKEN` secret
 
 This is a bearer token _you_ generate — it is not issued by Cloudflare. It authenticates the
 `/api/v1/operator/**` endpoints (readiness and purge). CI stages it into the deployed Worker as
 `OPERATOR_PREFLIGHT_TOKEN` (see `.github/workflows/deploy-cloudflare.yml`, "Stage deployment
 secrets" step) — same value, different name on each side of the deploy.
+
+Unlike `AUTH_PASSWORD`/`AUTH_PASS_COOKIE` (which keep un-prefixed names because they're also the
+keys the local `.env` uses, so one name covers CI, the Worker, and local dev — see the demo
+README's deployment-secrets table), `DEMO_PREFLIGHT_TOKEN` keeps its `DEMO_` prefix. It has no such
+constraint: it predates this epic and already follows the established CI-side pattern where the
+repository secret name differs from the deployed binding name, exactly as `DEMO_PURGE_TOKEN` is
+documented to be the same value as `OPERATOR_PREFLIGHT_TOKEN` for the purge tool. Not an
+inconsistency — renaming it would just churn the existing purge docs for nothing.
 
 ```sh
 openssl rand -base64 32
@@ -208,6 +227,10 @@ verification — the password wall is the compensating control, since nothing is
 without it.
 
 ## 7. Turn on the deploy job
+
+This is the twelfth variable, and it must be the **last** one you set — everything above (the
+eleven variables from steps 1–3, the secret from step 4, the migration in step 5, the check in
+step 6) needs to already be in place first:
 
 ```sh
 gh variable set DEMO_DEPLOYMENT_ENABLED --repo zudolab/vector-image-detection --body "true"
