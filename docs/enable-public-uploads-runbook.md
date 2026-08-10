@@ -43,24 +43,72 @@ Two things are commonly assumed to need provisioning and don't:
   can already call Workers AI, there is nothing to create.
 
 The genuinely provisioned resources are D1, the private R2 bucket, the photo Queue, a **separate**
-DLQ, and the Vectorize index:
+DLQ, and the Vectorize index.
+
+### Run these from the repository root, not from `apps/demo`
+
+**Do not use `pnpm --filter @vector-image-detection/demo exec wrangler` for the create commands.**
+That runs wrangler with `apps/demo/` as its working directory, where it discovers
+`apps/demo/wrangler.jsonc` and **appends a binding entry to it** derived from the resource name you
+just created. Create a D1 database and an R2 bucket with the same name and you get two bindings with
+the same derived name, which makes the config invalid — and then every subsequent wrangler command
+fails while parsing it, including ones that have nothing to do with the resource:
+
+```
+✘ [ERROR] Processing wrangler.jsonc configuration:
+    - vector_image_detection_demo assigned to D1 Database and R2 Bucket bindings.
+    - Bindings must have unique names, ...
+```
+
+This happened during the first real run of this runbook. If you hit it, `git checkout --
+apps/demo/wrangler.jsonc` and re-run from the root. Nothing in this runbook should ever leave a diff
+on that file — it is the _local dev_ config, every resource in it is `…-local`, and production names
+only ever reach a deploy through `render-production-config.mjs`.
+
+Invoking the binary by path from the repository root avoids the whole problem: the root has no
+wrangler config, and wrangler searches upward from the working directory, never downward into
+`apps/demo`. It also pins wrangler `4.120.0` (the demo's version) rather than the older `4.72.0` that
+a bare `pnpm exec wrangler` resolves to at the root.
 
 ```sh
+cd <repository root>
+export CLOUDFLARE_ACCOUNT_ID=<your account id>   # required if your wrangler login has more than one
+
 # D1 — the output includes the database_id you need in step 1.
-pnpm exec wrangler d1 create <production-d1-name>
+./apps/demo/node_modules/.bin/wrangler d1 create <production-d1-name>
 
 # Private R2 bucket — R2 buckets are private by default; no extra flag needed.
-pnpm exec wrangler r2 bucket create <production-r2-bucket-name>
+./apps/demo/node_modules/.bin/wrangler r2 bucket create <production-r2-bucket-name>
 
 # Photo queue and a separate DLQ. Do not reuse one queue as both.
-pnpm exec wrangler queues create <production-photo-queue-name>
-pnpm exec wrangler queues create <production-photo-dlq-name>
+./apps/demo/node_modules/.bin/wrangler queues create <production-photo-queue-name>
+./apps/demo/node_modules/.bin/wrangler queues create <production-photo-dlq-name>
 
 # Vectorize — dimensions and metric are FIXED AT CREATION and cannot be changed
 # later. They must match the pinned embedding model
 # (@cf/google/embeddinggemma-300m, 768-dimensional, cosine), so these two flags
 # are mandatory, not defaults to accept.
-pnpm exec wrangler vectorize create <production-vectorize-index-name> --dimensions=768 --metric=cosine
+./apps/demo/node_modules/.bin/wrangler vectorize create <production-vectorize-index-name> --dimensions=768 --metric=cosine
+```
+
+### Verify the index exists before you deploy — this one is not optional
+
+Wrangler **auto-provisions missing queues** during `wrangler deploy` (you will see
+`🌀 Creating new Queue … ✨ provisioned` in the job log), so a missed `queues create` self-heals.
+**Vectorize does not.** A missing index fails the deploy outright, after the binding table has
+already printed, with:
+
+```
+Vectorize binding 'PHOTO_VECTORS' references index '<name>' which was not found. [code: 10159]
+```
+
+The dry-run will not catch it — dry-run does not resolve remote resources. So confirm explicitly,
+and check the dimensions and metric in the output rather than just the name:
+
+```sh
+cd <repository root>
+./apps/demo/node_modules/.bin/wrangler vectorize list
+./apps/demo/node_modules/.bin/wrangler queues list
 ```
 
 The Queue/DLQ _consumer_ wiring (batch size, retries, which DLQ backs which queue) is declarative
@@ -244,12 +292,26 @@ gh variable set DEMO_DEPLOYMENT_ENABLED --repo zudolab/vector-image-detection --
 ```
 
 `deploy-cloudflare.yml` has no `workflow_dispatch` trigger — it only runs on `push` to `main`.
-Setting this variable does not deploy anything by itself; the `deploy-demo` job runs on the _next_
-push to `main`. If nothing else is queued, trigger it deliberately:
+Setting this variable does not deploy anything by itself.
+
+The cleanest trigger is to re-run the most recent deploy workflow. A job-level `if:` is re-evaluated
+on re-run, so the `deploy-demo` job that was skipped while the variable was unset will execute this
+time — no throwaway commit needed:
+
+```sh
+gh run list --workflow "Deploy Cloudflare static sites" --branch main --limit 1
+gh run rerun <the run id from above>
+```
+
+Re-running also re-runs `deploy-docs`, which is idempotent. If you would rather trigger from a push:
 
 ```sh
 git commit --allow-empty -m "chore: trigger demo deploy" && git push origin main
 ```
+
+Either way, watch the `deploy-demo` job. A failure at the **Deploy demo** step with `Verify the
+deployed demo` skipped means nothing was deployed and whatever was previously live is untouched —
+that is the safe failure shape, and step 0's Vectorize check is the usual cause.
 
 ## 8. What the bootstrap run will and will not verify
 
