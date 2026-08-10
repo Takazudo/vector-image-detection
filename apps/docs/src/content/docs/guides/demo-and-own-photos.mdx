@@ -23,7 +23,7 @@ ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
 
 9. **認証済み preflight を pass させる。** provisioning 中は repository variable `DEMO_DEPLOYMENT_ENABLED` を unset のままにし、demo deploy job を安全に skip させます。resource、read-only Worker、secret、acknowledgement がすべて用意できた最後の段階でだけ `DEMO_DEPLOYMENT_ENABLED=true` を設定します。`DEMO_PREFLIGHT_URL` と secret `DEMO_PREFLIGHT_TOKEN` を用意し、`pnpm run cloudflare:demo-preflight` を実行します。`/api/v1/operator/readiness` がすべての required check を `pass`、production、public writes enabled、正しいモデル/Vectorize invariant と返さない限り CI の demo deploy は停止します。
 
-   deploy 用 secret も同時に用意します。`DEMO_AUTH_PASSWORD`（deploy 後の `AUTH_PASSWORD`）、`DEMO_AUTH_PASS_COOKIE`（同じく `AUTH_PASS_COOKIE`）、`DEMO_PREFLIGHT_TOKEN`（同じく `OPERATOR_PREFLIGHT_TOKEN`）の 3 つを repository secret に入れます。CI は `wrangler deploy --secrets-file` で version と一緒に upload するので、dashboard での手動設定は不要です。gate secret が欠けた production Worker は serve を拒否します。
+   deploy 用 secret も同時に用意します。`AUTH_PASSWORD`、`AUTH_PASS_COOKIE`、`DEMO_PREFLIGHT_TOKEN`（deploy 後の `OPERATOR_PREFLIGHT_TOKEN`）の 3 つを repository secret に入れます。gate secret 2 つは prefix を付けません。すでにその名前で repository secret に存在し、local の `.env` でも同じ key を使うためです。CI は `wrangler deploy --secrets-file` で version と一緒に upload するので、dashboard での手動設定は不要です。gate secret が欠けた production Worker は serve を拒否します。
 
    deploy 前の gate は「まだ deploy されていない」状態だけを許容します。name が解決しない、connection が拒否される、Cloudflare の 1000 番台 edge error が返る場合は `::warning::` にして先へ進みます。応答がある target — `401` や、check が fail している `200` を含む — は従来どおり job を止めます。初回 deploy だけは verification より先に traffic が切り替わりますが、password wall が公開を防ぎ、`DEMO_DEPLOYMENT_ENABLED` が人による opt-in として残り、deploy 後の strict gate が必ず走って失敗時に rollback command を出力します。
 

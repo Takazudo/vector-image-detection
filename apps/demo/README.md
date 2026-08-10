@@ -76,11 +76,13 @@ On a bootstrap run this means traffic switches before verification. The password
 
 Secrets are uploaded with the version itself via `wrangler deploy --secrets-file`, not through `wrangler secret put`, which cannot create a Worker that does not exist yet and would otherwise leave a window where the Worker serves ungated. CI stages the file under `RUNNER_TEMP` at mode 600 and removes it in an `always()` step.
 
-| Repository secret       | Deployed name              | Purpose                                                         |
-| ----------------------- | -------------------------- | --------------------------------------------------------------- |
-| `DEMO_AUTH_PASSWORD`    | `AUTH_PASSWORD`            | Password wall; a production Worker without it refuses to serve. |
-| `DEMO_AUTH_PASS_COOKIE` | `AUTH_PASS_COOKIE`         | Fixed cookie value that lets CI and agents skip the prompt.     |
-| `DEMO_PREFLIGHT_TOKEN`  | `OPERATOR_PREFLIGHT_TOKEN` | Bearer token for the operator readiness and purge endpoints.    |
+| Repository secret      | Deployed name              | Purpose                                                         |
+| ---------------------- | -------------------------- | --------------------------------------------------------------- |
+| `AUTH_PASSWORD`        | `AUTH_PASSWORD`            | Password wall; a production Worker without it refuses to serve. |
+| `AUTH_PASS_COOKIE`     | `AUTH_PASS_COOKIE`         | Fixed cookie value that lets CI and agents skip the prompt.     |
+| `DEMO_PREFLIGHT_TOKEN` | `OPERATOR_PREFLIGHT_TOKEN` | Bearer token for the operator readiness and purge endpoints.    |
+
+The two gate secrets deliberately keep their un-prefixed names: they already exist on the repository under exactly those names and are also the keys used in the local `.env`, so one name covers CI, the deployed Worker, and local dev.
 
 `pnpm run cloudflare:demo-preflight` requires `DEMO_PREFLIGHT_URL`, `DEMO_PREFLIGHT_TOKEN`, and exact values for all three acknowledgements:
 

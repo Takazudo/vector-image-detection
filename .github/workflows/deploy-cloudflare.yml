@@ -156,8 +156,8 @@ jobs:
       # always() step at the end of the job.
       - name: Stage deployment secrets
         env:
-          AUTH_PASSWORD: ${{ secrets.DEMO_AUTH_PASSWORD }}
-          AUTH_PASS_COOKIE: ${{ secrets.DEMO_AUTH_PASS_COOKIE }}
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          AUTH_PASS_COOKIE: ${{ secrets.AUTH_PASS_COOKIE }}
           OPERATOR_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
         run: node scripts/cloudflare/write-deploy-secrets.mjs "$RUNNER_TEMP/demo-deploy-secrets.json"
 
