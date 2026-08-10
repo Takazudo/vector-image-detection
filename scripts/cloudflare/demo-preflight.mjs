@@ -24,6 +24,7 @@ export const REQUIRED_READINESS_CHECKS = [
   "vectorize",
   "rate_limit",
   "operator_acknowledgements",
+  "auth_gate",
 ];
 
 export function validateAcknowledgements(environment) {

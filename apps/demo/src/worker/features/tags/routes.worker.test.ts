@@ -64,6 +64,7 @@ function context(
         acknowledgeAnonymousPublicWrites: false,
         acknowledgeRetainedImageMetadata: false,
         acknowledgeReactivePurgeOnlyModeration: false,
+        authGateConfigured: false,
       }),
     },
   };

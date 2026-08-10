@@ -1,3 +1,5 @@
+import { isAuthGateConfigured } from "./auth-gate";
+
 export const MODEL_CONFIG = {
   vision: "@cf/moondream/moondream3.1-9B-A2B",
   embedding: "@cf/google/embeddinggemma-300m",
@@ -41,6 +43,8 @@ export interface RuntimeSettings {
   acknowledgeAnonymousPublicWrites: boolean;
   acknowledgeRetainedImageMetadata: boolean;
   acknowledgeReactivePurgeOnlyModeration: boolean;
+  /** Derived, never the values: readiness may only ever observe pass/fail here. */
+  authGateConfigured: boolean;
 }
 
 export function readRuntimeSettings(env: Env): RuntimeSettings {
@@ -50,6 +54,7 @@ export function readRuntimeSettings(env: Env): RuntimeSettings {
     acknowledgeAnonymousPublicWrites: isTrue(env.ACK_ANONYMOUS_PUBLIC_WRITES),
     acknowledgeRetainedImageMetadata: isTrue(env.ACK_RETAINED_IMAGE_METADATA),
     acknowledgeReactivePurgeOnlyModeration: isTrue(env.ACK_REACTIVE_PURGE_ONLY),
+    authGateConfigured: isAuthGateConfigured(env),
   };
 }
 

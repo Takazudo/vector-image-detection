@@ -167,6 +167,7 @@ function fakeProviders(
         acknowledgeAnonymousPublicWrites: false,
         acknowledgeRetainedImageMetadata: false,
         acknowledgeReactivePurgeOnlyModeration: false,
+        authGateConfigured: false,
       }),
     },
     assets: {},

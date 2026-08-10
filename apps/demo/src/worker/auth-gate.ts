@@ -90,6 +90,16 @@ export function validateNext(raw: string | null | undefined): string {
 }
 
 /**
+ * Whether the gate can actually challenge a visitor. Readiness reports this as a
+ * single boolean so the unauthenticated `/api/v1/readiness` response never says
+ * *which* secret is missing — the distinction between "absent" and "half
+ * configured" is an operator concern, not a public one.
+ */
+export function isAuthGateConfigured(env: AuthGateEnv): boolean {
+  return resolveAuthGateConfig(env).state === "active";
+}
+
+/**
  * Both secrets absent leaves the gate inert so credential-free CI stays green —
  * except in production, where serving ungated is never acceptable. Exactly one
  * secret is a half-finished setup: an empty cookie value cannot establish a
