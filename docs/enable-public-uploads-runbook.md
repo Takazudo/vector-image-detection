@@ -210,15 +210,22 @@ deploy then replaces the stale Worker in place; you do **not** need to delete an
 
 The distinction the gate draws is between _unparseable_ and _failing_:
 
-| Pre-deploy response                                            | Result                        |
-| -------------------------------------------------------------- | ----------------------------- |
-| DNS failure, connection refused, Cloudflare 1000-series, `530` | bootstrap → warn and continue |
-| `200` with a non-JSON body (a stale build, the SPA shell)      | bootstrap → warn and continue |
-| `200` with valid readiness JSON reporting a failed check       | **hard fail**                 |
-| `401`, `404`, or any other answered status                     | **hard fail**                 |
+| Pre-deploy response                                               | Result                           |
+| ----------------------------------------------------------------- | -------------------------------- |
+| DNS failure, connection refused, Cloudflare 1000-series, `530`    | bootstrap → warn and continue    |
+| `200` with a non-JSON body (a stale build, the SPA shell)         | bootstrap → warn and continue    |
+| `200` with valid readiness JSON missing a check this release adds | warn and continue (schema drift) |
+| `200` with valid readiness JSON reporting a failed check          | **hard fail**                    |
+| `401`, `404`, or any other answered status                        | **hard fail**                    |
 
 A body that parses means this Worker answered, so a failure in it is real and blocks the deploy.
 A body that does not parse means something else is answering.
+
+The same logic covers schema drift. The gate interrogates the Worker that is _already_
+running, which cannot report a readiness check the release being shipped introduces — so a
+_missing_ required check is forgiven pre-deploy and only warned about. Without that, every
+future release that adds a required check would be unable to deploy itself. Only absence is
+forgiven: a check the deployed Worker does report, and reports as failing, still blocks.
 
 None of this relaxes the **post-deploy** gate, which runs with bootstrap tolerance off: after the
 deploy, the freshly deployed Worker must return fully passing readiness JSON or the job goes red

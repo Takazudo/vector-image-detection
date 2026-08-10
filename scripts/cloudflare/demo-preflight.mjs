@@ -35,7 +35,20 @@ export function validateAcknowledgements(environment) {
   }
 }
 
-export function validateReadiness(body) {
+/**
+ * `allowSchemaDrift` lets a *missing* required check pass. The pre-deploy gate
+ * interrogates the Worker that is currently deployed, and that Worker predates
+ * the release being shipped — so it cannot report a check this release adds.
+ * Validating the old version against the new required-checks list would make
+ * every release that adds a check unable to deploy itself.
+ *
+ * Only absence is forgiven, and only pre-deploy. A check the deployed Worker
+ * *does* report and reports as failing is a real failure at any time, and the
+ * strict post-deploy gate requires the full list.
+ *
+ * Returns the names that were skipped so the caller can surface them.
+ */
+export function validateReadiness(body, { allowSchemaDrift = false } = {}) {
   if (body?.status !== "ready" || body?.environment !== "production") {
     throw new Error("Production Worker readiness did not pass.");
   }
@@ -52,13 +65,14 @@ export function validateReadiness(body) {
   }
   const checksByName = new Map(body.checks.map((check) => [check.name, check]));
   const missing = REQUIRED_READINESS_CHECKS.filter((name) => !checksByName.has(name));
-  if (missing.length > 0) {
+  if (missing.length > 0 && !allowSchemaDrift) {
     throw new Error(`Production readiness is missing required checks: ${missing.join(", ")}.`);
   }
   const failed = body.checks.filter(({ status }) => status !== "pass");
   if (failed.length > 0) {
     throw new Error("Production readiness contains failed or deferred binding checks.");
   }
+  return { skippedChecks: missing };
 }
 
 /**
@@ -178,7 +192,12 @@ export async function demoPreflight({
       if (response.ok) {
         const body = await readReadinessBody(response);
         if (body !== undefined) {
-          validateReadiness(body);
+          const { skippedChecks } = validateReadiness(body, { allowSchemaDrift: allowBootstrap });
+          if (skippedChecks.length > 0) {
+            warn(
+              `::warning::The deployed Worker does not report ${skippedChecks.join(", ")}, so it predates this release. Everything it does report passed; the post-deploy gate requires the full set.`,
+            );
+          }
           log("Cloudflare demo deployment preflight passed.");
           return { status: "passed" };
         }

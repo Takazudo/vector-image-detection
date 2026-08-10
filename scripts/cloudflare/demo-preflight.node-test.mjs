@@ -299,6 +299,56 @@ test("a 200 that is not JSON still fails the strict post-deploy gate", async () 
   );
 });
 
+test("pre-deploy accepts a deployed Worker that predates a newly required check", async () => {
+  // The gate interrogates the Worker already running, which cannot report a
+  // check the release being shipped introduces. Validating the old version
+  // against the new list would stop every check-adding release deploying itself.
+  const previousSchema = REQUIRED_READINESS_CHECKS.filter((name) => name !== "auth_gate");
+  const warnings = [];
+
+  const result = await demoPreflight({
+    environment: bootstrapEnvironment,
+    fetchImpl: async () =>
+      Response.json({
+        status: "ready",
+        environment: "production",
+        publicWritesEnabled: true,
+        models: EXPECTED_MODELS,
+        checks: previousSchema.map((name) => ({ name, status: "pass" })),
+      }),
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /auth_gate/);
+  assert.match(warnings[0], /predates this release/);
+});
+
+test("pre-deploy still rejects a check the old Worker reports as failing", async () => {
+  // Only absence is forgiven. A check the deployed Worker does report, and
+  // reports as failing, is a real failure at any time.
+  await assert.rejects(
+    demoPreflight({
+      environment: bootstrapEnvironment,
+      fetchImpl: async () =>
+        Response.json({
+          status: "ready",
+          environment: "production",
+          publicWritesEnabled: true,
+          models: EXPECTED_MODELS,
+          checks: REQUIRED_READINESS_CHECKS.map((name) => ({
+            name,
+            status: name === "d1" ? "fail" : "pass",
+          })),
+        }),
+      ...silent,
+    }),
+    /failed or deferred/,
+  );
+});
+
 test("a 200 whose JSON reports a failure is never bootstrap-tolerated", async () => {
   // The contract distinction: an unparseable body means something else is
   // answering; a parseable body means this Worker answered and is broken.
