@@ -52,7 +52,7 @@ function assertConfig(siteName, config, expected) {
   if (siteName === "demo") {
     assert.equal(config.main, "./src/worker/index.ts");
     assert.equal(config.assets?.binding, "ASSETS");
-    assert.deepEqual(config.assets?.run_worker_first, ["/api/*"]);
+    assert.equal(config.assets?.run_worker_first, true);
   }
 }
 

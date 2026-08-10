@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "zfb dev",
+    "dev:worker": "node scripts/dev-worker.mjs",
     "typecheck": "pnpm run worker:types:check && tsc -b && zfb check",
     "prebuild": "node scripts/clean-output.mjs",
     "build": "tsc -b && zfb build",
