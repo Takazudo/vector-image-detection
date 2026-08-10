@@ -16,5 +16,11 @@ export default defineConfig({
   ],
   test: {
     include: ["src/worker/**/*.worker.test.ts"],
+    // Vitest's 5s default is measured against a cold workerd isolate: the first test in
+    // each file waits on module import, which dominates this suite (~50s of import time
+    // across 16 files starting in parallel). At 5s the first test in a file failed on
+    // roughly half of full-suite runs while passing in isolation.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });
