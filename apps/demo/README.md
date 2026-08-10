@@ -70,7 +70,7 @@ The demo job renders `.wrangler.production.generated.json` once and both dry-run
 
 ### The two readiness gates
 
-The pre-deploy gate interrogates the _already deployed_ Worker, which does not exist before the first-ever deploy. It is therefore bootstrap-tolerant: a target that does not resolve, refuses the connection, or answers a Cloudflare 1000-series edge error downgrades to a `::warning::` and the job continues. A target that answers—including a `401`, or a `200` reporting a failed check—still fails the job exactly as before, so nothing changes once the demo is live.
+The pre-deploy gate interrogates the _already deployed_ Worker, which does not exist before the first-ever deploy. It is therefore bootstrap-tolerant: a target that does not resolve, refuses the connection, or answers a Cloudflare 1000-series edge error downgrades to a `::warning::` and the job continues. A target that answers with a readiness body reporting a `401` or a failed check still fails the job, so a live, broken demo is never deployed over silently. The exact boundary is below.
 
 On a bootstrap run this means traffic switches before verification. The password wall is the compensating control (nothing is publicly reachable even if the deploy is wrong) and `DEMO_DEPLOYMENT_ENABLED` remains the outer human opt-in. The post-deploy gate is strict, mandatory, and prints the `wrangler rollback` command when it fails.
 
