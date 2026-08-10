@@ -61,23 +61,133 @@ export function validateReadiness(body) {
   }
 }
 
-export async function demoPreflight({ environment = process.env, fetchImpl = fetch } = {}) {
+/**
+ * Transport failures that mean "nothing is deployed at the target yet" rather
+ * than "the deployed Worker is unhealthy". Node reports all of them as an
+ * opaque `TypeError: fetch failed`; the discriminating code lives on `cause`.
+ * A timeout is deliberately absent — a deployed but hung Worker looks the same.
+ */
+const BOOTSTRAP_NETWORK_CODES = new Set([
+  "ENOTFOUND", // the hostname has no DNS record, so no route exists yet
+  "EAI_AGAIN", // the resolver could not answer; a new custom domain may still be propagating
+  "ECONNREFUSED", // the address resolves but nothing accepts the connection
+]);
+
+/**
+ * Cloudflare's 1000-series edge errors are produced before any Worker runs, so
+ * they also mean "nothing is routed here". 530 is the status Cloudflare pairs
+ * with 1001/1016; the numeric code itself only appears in the error page body.
+ */
+const CLOUDFLARE_EDGE_ERROR_PATTERN = /\bError 10\d\d\b/;
+
+const MAXIMUM_CAUSE_DEPTH = 8;
+
+/** Walks the `cause` chain that `undici` wraps around the real syscall error. */
+export function transportErrorCode(error) {
+  let current = error;
+  for (let depth = 0; current && depth < MAXIMUM_CAUSE_DEPTH; depth += 1) {
+    if (typeof current.code === "string") return current.code;
+    current = current.cause;
+  }
+  return undefined;
+}
+
+/**
+ * Returns why the target counts as "not deployed yet", or `undefined` when the
+ * response proves a Worker is answering. A 401, a 404, or any 2xx belongs to
+ * the second group: something is deployed and it is misbehaving.
+ */
+export function bootstrapResponseReason(status, body) {
+  if (status === 530) {
+    return "Cloudflare answered 530, so no Worker is routed to the target yet";
+  }
+  if (status >= 500 && CLOUDFLARE_EDGE_ERROR_PATTERN.test(body)) {
+    return `Cloudflare answered a 1000-series edge error (HTTP ${status}), so no Worker is routed to the target yet`;
+  }
+  return undefined;
+}
+
+function positiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+async function readReadinessBody(response) {
+  try {
+    return await response.json();
+  } catch {
+    throw new Error("Production readiness did not return a JSON body.");
+  }
+}
+
+/**
+ * Resolves to `{ status: "passed" }`, or `{ status: "bootstrap" }` when the
+ * target is provably not deployed yet and `DEMO_PREFLIGHT_ALLOW_BOOTSTRAP` lets
+ * that pass. Every other failure still throws.
+ *
+ * Retries cover only the not-deployed-yet class, so a failing readiness body is
+ * reported on the first attempt and never waited out.
+ */
+export async function demoPreflight({
+  environment = process.env,
+  fetchImpl = fetch,
+  log = console.log,
+  warn = console.warn,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+} = {}) {
   validateAcknowledgements(environment);
   const url = environment.DEMO_PREFLIGHT_URL;
   const token = environment.DEMO_PREFLIGHT_TOKEN;
   if (!url || !token) {
     throw new Error("DEMO_PREFLIGHT_URL and DEMO_PREFLIGHT_TOKEN are required.");
   }
+  const allowBootstrap = environment.DEMO_PREFLIGHT_ALLOW_BOOTSTRAP === "true";
+  const attempts = positiveInteger(environment.DEMO_PREFLIGHT_ATTEMPTS, 1);
+  const retryDelayMs = nonNegativeInteger(environment.DEMO_PREFLIGHT_RETRY_DELAY_MS, 15_000);
 
   const endpoint = new URL("/api/v1/operator/readiness", url);
-  const response = await fetchImpl(endpoint, {
-    headers: { authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) {
-    throw new Error(`Production Worker readiness request failed (${response.status}).`);
+  let unreachableReason;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(endpoint, { headers: { authorization: `Bearer ${token}` } });
+    } catch (error) {
+      const code = transportErrorCode(error);
+      if (!BOOTSTRAP_NETWORK_CODES.has(code)) {
+        throw new Error(
+          `Production Worker readiness request could not complete (${code ?? error.message}).`,
+        );
+      }
+      unreachableReason = `the target did not resolve or refused the connection (${code})`;
+    }
+
+    if (response) {
+      if (response.ok) {
+        validateReadiness(await readReadinessBody(response));
+        log("Cloudflare demo deployment preflight passed.");
+        return { status: "passed" };
+      }
+      unreachableReason = bootstrapResponseReason(response.status, await response.text());
+      if (!unreachableReason) {
+        throw new Error(`Production Worker readiness request failed (${response.status}).`);
+      }
+    }
+
+    if (attempt < attempts) await sleep(retryDelayMs);
   }
-  validateReadiness(await response.json());
-  console.log("Cloudflare demo deployment preflight passed.");
+
+  if (allowBootstrap) {
+    warn(
+      `::warning::Bootstrap deployment: ${unreachableReason}. The pre-deploy readiness gate is being skipped; the mandatory post-deploy gate still has to pass.`,
+    );
+    return { status: "bootstrap", reason: unreachableReason };
+  }
+  throw new Error(`Production Worker readiness is unreachable: ${unreachableReason}.`);
 }
 
 if (import.meta.url === new URL(process.argv[1], "file:").href) {

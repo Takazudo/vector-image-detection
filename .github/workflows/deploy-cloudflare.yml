@@ -93,27 +93,18 @@ jobs:
         run: pnpm --filter @vector-image-detection/demo... run build
 
       - name: Test production demo preflight gate
-        run: node --test scripts/cloudflare/demo-preflight.node-test.mjs
+        run: >-
+          node --test scripts/cloudflare/demo-preflight.node-test.mjs
+          scripts/cloudflare/write-deploy-secrets.node-test.mjs
+          scripts/cloudflare/deploy-workflow.node-test.mjs
+          apps/demo/scripts/render-production-config.node-test.mjs
 
-      - name: Dry-run demo deployment
+      # Render once. The dry-run and the deploy below both point at this exact
+      # generated file, because dry-running the inert committed template proves
+      # nothing about the substituted resource names or the writes-on vars that
+      # only the renderer sets.
+      - name: Render production Wrangler config
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: pnpm --filter @vector-image-detection/demo run deploy:dry-run:production
-
-      - name: Gate production demo deployment
-        env:
-          DEMO_PREFLIGHT_URL: ${{ vars.DEMO_PREFLIGHT_URL }}
-          DEMO_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
-          ACK_ANONYMOUS_PUBLIC_WRITES: ${{ vars.ACK_ANONYMOUS_PUBLIC_WRITES }}
-          ACK_RETAINED_IMAGE_METADATA: ${{ vars.ACK_RETAINED_IMAGE_METADATA }}
-          ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
-        run: pnpm run cloudflare:demo-preflight
-
-      - name: Deploy demo
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           DEMO_D1_DATABASE_NAME: ${{ vars.DEMO_D1_DATABASE_NAME }}
           DEMO_D1_DATABASE_ID: ${{ vars.DEMO_D1_DATABASE_ID }}
           DEMO_R2_BUCKET_NAME: ${{ vars.DEMO_R2_BUCKET_NAME }}
@@ -124,4 +115,83 @@ jobs:
           ACK_ANONYMOUS_PUBLIC_WRITES: ${{ vars.ACK_ANONYMOUS_PUBLIC_WRITES }}
           ACK_RETAINED_IMAGE_METADATA: ${{ vars.ACK_RETAINED_IMAGE_METADATA }}
           ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
-        run: pnpm --filter @vector-image-detection/demo run deploy
+        run: pnpm --filter @vector-image-detection/demo run render:production
+
+      - name: Dry-run demo deployment
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >-
+          pnpm --filter @vector-image-detection/demo exec
+          wrangler deploy --dry-run --config .wrangler.production.generated.json
+
+      # Bootstrap-tolerant on purpose. This gate interrogates the *already
+      # deployed* Worker, which does not exist before the first-ever deploy, so
+      # an unresolvable target or a Cloudflare 1000-series edge error downgrades
+      # to a warning. A target that answers but reports failing readiness — or
+      # answers 401 — still hard-fails here exactly as before, so the
+      # steady-state posture is unchanged.
+      #
+      # The trade-off: on a bootstrap run traffic switches before verification.
+      # The password wall is the compensating control (nothing is publicly
+      # reachable even if the deploy is wrong), DEMO_DEPLOYMENT_ENABLED remains
+      # the outer human opt-in, and the strict post-deploy gate below is
+      # mandatory and prints the rollback command when it fails.
+      - name: Gate production demo deployment
+        env:
+          DEMO_PREFLIGHT_URL: ${{ vars.DEMO_PREFLIGHT_URL }}
+          DEMO_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
+          DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "true"
+          ACK_ANONYMOUS_PUBLIC_WRITES: ${{ vars.ACK_ANONYMOUS_PUBLIC_WRITES }}
+          ACK_RETAINED_IMAGE_METADATA: ${{ vars.ACK_RETAINED_IMAGE_METADATA }}
+          ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
+        run: pnpm run cloudflare:demo-preflight
+
+      # Secrets travel with the version via `wrangler deploy --secrets-file`.
+      # `wrangler secret put` cannot be used: it mutates a live Worker, so it
+      # fails on the first-ever deploy and otherwise leaves a window where the
+      # Worker is serving but ungated. The file is written from step env by a
+      # Node script (never interpolated into a shell line), lands under
+      # RUNNER_TEMP outside the checkout at mode 600, and is removed by the
+      # always() step at the end of the job.
+      - name: Stage deployment secrets
+        env:
+          AUTH_PASSWORD: ${{ secrets.DEMO_AUTH_PASSWORD }}
+          AUTH_PASS_COOKIE: ${{ secrets.DEMO_AUTH_PASS_COOKIE }}
+          OPERATOR_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
+        run: node scripts/cloudflare/write-deploy-secrets.mjs "$RUNNER_TEMP/demo-deploy-secrets.json"
+
+      - name: Deploy demo
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >-
+          pnpm --filter @vector-image-detection/demo exec
+          wrangler deploy --config .wrangler.production.generated.json
+          --secrets-file "$RUNNER_TEMP/demo-deploy-secrets.json"
+
+      # Mandatory and strict: no bootstrap tolerance, so the freshly deployed
+      # Worker has to answer a fully passing readiness or this job goes red.
+      # The retries only cover DNS for a brand-new custom domain; a reachable
+      # Worker reporting a failed check fails on the first attempt.
+      - name: Verify the deployed demo
+        env:
+          DEMO_PREFLIGHT_URL: ${{ vars.DEMO_PREFLIGHT_URL }}
+          DEMO_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
+          DEMO_PREFLIGHT_ATTEMPTS: "6"
+          DEMO_PREFLIGHT_RETRY_DELAY_MS: "15000"
+          ACK_ANONYMOUS_PUBLIC_WRITES: ${{ vars.ACK_ANONYMOUS_PUBLIC_WRITES }}
+          ACK_RETAINED_IMAGE_METADATA: ${{ vars.ACK_RETAINED_IMAGE_METADATA }}
+          ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
+        run: |
+          if ! pnpm run cloudflare:demo-preflight; then
+            echo "::error::The freshly deployed demo failed its readiness gate. Roll back:"
+            echo "  pnpm --filter @vector-image-detection/demo exec wrangler versions list --name vector-image-detection-demo"
+            echo "  pnpm --filter @vector-image-detection/demo exec wrangler rollback --name vector-image-detection-demo"
+            echo "A first-ever custom domain can still be provisioning its certificate; if the deploy itself succeeded, re-run this job once before rolling back."
+            exit 1
+          fi
+
+      - name: Remove staged deployment secrets
+        if: always()
+        run: rm -f "$RUNNER_TEMP/demo-deploy-secrets.json"

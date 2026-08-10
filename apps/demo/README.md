@@ -62,7 +62,25 @@ The checked-in production config contains inert placeholders and `PUBLIC_WRITES_
 The deploy workflow has two independent jobs:
 
 1. Docs build, dry-run, and deploy without the demo readiness gate.
-2. Demo dry-run, then authenticated `GET /api/v1/operator/readiness` preflight, then deploy—but only after an operator explicitly sets the repository variable `DEMO_DEPLOYMENT_ENABLED=true`. Leave it unset while account provisioning is deferred; the demo job will be skipped without turning the docs workflow red.
+2. Demo render, dry-run, authenticated `GET /api/v1/operator/readiness` preflight, deploy, then a second strict readiness gate against what was just deployed—but only after an operator explicitly sets the repository variable `DEMO_DEPLOYMENT_ENABLED=true`. Leave it unset while account provisioning is deferred; the demo job will be skipped without turning the docs workflow red.
+
+The demo job renders `.wrangler.production.generated.json` once and both dry-runs and deploys that same file, so a green dry-run covers the real resource substitutions rather than the inert template.
+
+### The two readiness gates
+
+The pre-deploy gate interrogates the _already deployed_ Worker, which does not exist before the first-ever deploy. It is therefore bootstrap-tolerant: a target that does not resolve, refuses the connection, or answers a Cloudflare 1000-series edge error downgrades to a `::warning::` and the job continues. A target that answers—including a `401`, or a `200` reporting a failed check—still fails the job exactly as before, so nothing changes once the demo is live.
+
+On a bootstrap run this means traffic switches before verification. The password wall is the compensating control (nothing is publicly reachable even if the deploy is wrong) and `DEMO_DEPLOYMENT_ENABLED` remains the outer human opt-in. The post-deploy gate is strict, mandatory, and prints the `wrangler rollback` command when it fails.
+
+### Deployment secrets
+
+Secrets are uploaded with the version itself via `wrangler deploy --secrets-file`, not through `wrangler secret put`, which cannot create a Worker that does not exist yet and would otherwise leave a window where the Worker serves ungated. CI stages the file under `RUNNER_TEMP` at mode 600 and removes it in an `always()` step.
+
+| Repository secret       | Deployed name              | Purpose                                                         |
+| ----------------------- | -------------------------- | --------------------------------------------------------------- |
+| `DEMO_AUTH_PASSWORD`    | `AUTH_PASSWORD`            | Password wall; a production Worker without it refuses to serve. |
+| `DEMO_AUTH_PASS_COOKIE` | `AUTH_PASS_COOKIE`         | Fixed cookie value that lets CI and agents skip the prompt.     |
+| `DEMO_PREFLIGHT_TOKEN`  | `OPERATOR_PREFLIGHT_TOKEN` | Bearer token for the operator readiness and purge endpoints.    |
 
 `pnpm run cloudflare:demo-preflight` requires `DEMO_PREFLIGHT_URL`, `DEMO_PREFLIGHT_TOKEN`, and exact values for all three acknowledgements:
 
