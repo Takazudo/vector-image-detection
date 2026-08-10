@@ -42,6 +42,16 @@ export function configurationReadiness(providers: PlatformProviders): ReadinessR
         ? "Anonymous public writes, retained original image metadata, and reactive-purge-only moderation are explicitly acknowledged."
         : "Public writes are disabled; anonymous writes, retained original image metadata, and reactive-purge-only moderation are not yet acknowledged.",
     ),
+    check(
+      "auth_gate",
+      settings.environment !== "production" ||
+        !settings.publicWritesEnabled ||
+        settings.authGateConfigured,
+      // Deliberately invariant: this endpoint is unauthenticated, so `status` is
+      // the only thing the check may disclose. A detail that named the absent
+      // secret would hand an anonymous caller a checklist for the password wall.
+      "Demo access-gate configuration is consistent with this deployment's environment and write posture.",
+    ),
   ];
 
   return response(settings.environment, settings.publicWritesEnabled, checks);
@@ -134,6 +144,18 @@ export async function deepReadiness(providers: PlatformProviders): Promise<Readi
       settings.publicWritesEnabled && acknowledgements
         ? "Public writes plus anonymous-write, retained-metadata, and reactive-purge-only acknowledgements are explicit."
         : "Production release requires public writes plus explicit anonymous-write, retained-metadata, and reactive-purge-only acknowledgements.",
+    ),
+  );
+
+  // Operator-authenticated, so this one may name the bindings an operator has to
+  // set. It still reports configuration presence only — never a secret value.
+  checks.push(
+    check(
+      "auth_gate",
+      settings.publicWritesEnabled && settings.authGateConfigured,
+      settings.publicWritesEnabled && settings.authGateConfigured
+        ? "Public writes are live behind a fully configured demo access gate."
+        : "Production release requires public writes plus a fully configured demo access gate (AUTH_PASSWORD and AUTH_PASS_COOKIE).",
     ),
   );
 

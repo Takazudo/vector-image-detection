@@ -67,7 +67,61 @@ test("demo preflight rejects a readiness response without every required binding
           checks: [{ name: "configuration", status: "pass", detail: "ok" }],
         }),
     }),
+    // `d1` is the first entry after `configuration` in REQUIRED_READINESS_CHECKS;
+    // a new required check must be appended rather than inserted ahead of it.
     /missing required checks: d1/,
+  );
+});
+
+test("demo preflight refuses a production deployment with no auth gate check", async () => {
+  await assert.rejects(
+    demoPreflight({
+      environment: {
+        ...acknowledged,
+        DEMO_PREFLIGHT_URL: "https://demo.example.test",
+        DEMO_PREFLIGHT_TOKEN: "secret-value",
+      },
+      fetchImpl: async () =>
+        Response.json({
+          status: "ready",
+          environment: "production",
+          publicWritesEnabled: true,
+          models: EXPECTED_MODELS,
+          checks: REQUIRED_READINESS_CHECKS.filter((name) => name !== "auth_gate").map((name) => ({
+            name,
+            status: "pass",
+            detail: "ok",
+          })),
+        }),
+    }),
+    /missing required checks: auth_gate/,
+  );
+});
+
+test("demo preflight refuses a production deployment whose auth gate check failed", async () => {
+  await assert.rejects(
+    demoPreflight({
+      environment: {
+        ...acknowledged,
+        DEMO_PREFLIGHT_URL: "https://demo.example.test",
+        DEMO_PREFLIGHT_TOKEN: "secret-value",
+      },
+      // Top-level "ready" with a failing check cannot come from the Worker, whose
+      // status is derived — the fixture proves preflight re-checks it regardless.
+      fetchImpl: async () =>
+        Response.json({
+          status: "ready",
+          environment: "production",
+          publicWritesEnabled: true,
+          models: EXPECTED_MODELS,
+          checks: REQUIRED_READINESS_CHECKS.map((name) => ({
+            name,
+            status: name === "auth_gate" ? "fail" : "pass",
+            detail: "ok",
+          })),
+        }),
+    }),
+    /failed or deferred/,
   );
 });
 
