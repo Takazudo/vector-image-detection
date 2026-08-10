@@ -1,7 +1,21 @@
+import { handleAuthGate } from "./auth-gate";
 import type { ApiErrorResponse, HealthResponse, OperatorPurgeResponse } from "./contracts/api";
 import { requestOperatorPurge } from "./features/maintenance/purge";
 import { createPlatformProviders, type PlatformProviders } from "./providers";
 import { configurationReadiness, deepReadiness } from "./readiness";
+
+/**
+ * Operator endpoints authenticate with their own bearer check
+ * (`authorizedOperatorRequest`, below) and must never be shadowed by the
+ * password-gate login page — see issue #48. This must stay a prefix check on
+ * the raw pathname, evaluated before `handleAuthGate` runs, so the exemption
+ * holds even when the gate itself is misconfigured and would otherwise 503.
+ */
+const OPERATOR_PATH_PREFIX = "/api/v1/operator/";
+
+export function isOperatorPath(pathname: string): boolean {
+  return pathname.startsWith(OPERATOR_PATH_PREFIX);
+}
 
 export interface ApiRequestContext {
   env: Env;
@@ -36,6 +50,10 @@ export async function routeRequest(
   featureRoutes: readonly ApiRoute[],
 ): Promise<Response> {
   const url = new URL(request.url);
+  if (!isOperatorPath(url.pathname)) {
+    const gated = await handleAuthGate(request, env);
+    if (gated) return gated;
+  }
   if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
 
   const providers = createPlatformProviders(env);
