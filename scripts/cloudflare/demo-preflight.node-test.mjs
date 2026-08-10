@@ -273,14 +273,49 @@ test("bootstrap tolerance never excuses a failing readiness body", async () => {
   );
 });
 
-test("a 200 that is not JSON is a deployed-but-broken Worker", async () => {
+test("a 200 that is not JSON is bootstrap-tolerated before deploy", async () => {
+  // The production hostname can be serving something that predates this JSON
+  // API — a stale build whose asset layer answers every /api/* path with the
+  // SPA shell. That is "this Worker is not live here yet", not "this Worker is
+  // broken", so the pre-deploy gate rolls over it.
+  const result = await demoPreflight({
+    environment: bootstrapEnvironment,
+    fetchImpl: async () => new Response("<html>stale build</html>", { status: 200 }),
+    ...silent,
+  });
+
+  assert.equal(result.status, "bootstrap");
+  assert.match(result.reason, /non-JSON body/);
+});
+
+test("a 200 that is not JSON still fails the strict post-deploy gate", async () => {
+  await assert.rejects(
+    demoPreflight({
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
+      fetchImpl: async () => new Response("<html>stale build</html>", { status: 200 }),
+      ...silent,
+    }),
+    /non-JSON body/,
+  );
+});
+
+test("a 200 whose JSON reports a failure is never bootstrap-tolerated", async () => {
+  // The contract distinction: an unparseable body means something else is
+  // answering; a parseable body means this Worker answered and is broken.
   await assert.rejects(
     demoPreflight({
       environment: bootstrapEnvironment,
-      fetchImpl: async () => new Response("<html>maintenance</html>", { status: 200 }),
+      fetchImpl: async () =>
+        Response.json({
+          status: "not_ready",
+          environment: "production",
+          publicWritesEnabled: true,
+          models: EXPECTED_MODELS,
+          checks: REQUIRED_READINESS_CHECKS.map((name) => ({ name, status: "pass" })),
+        }),
       ...silent,
     }),
-    /did not return a JSON body/,
+    /readiness did not pass/,
   );
 });
 

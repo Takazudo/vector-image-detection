@@ -74,7 +74,7 @@ The pre-deploy gate interrogates the _already deployed_ Worker, which does not e
 
 On a bootstrap run this means traffic switches before verification. The password wall is the compensating control (nothing is publicly reachable even if the deploy is wrong) and `DEMO_DEPLOYMENT_ENABLED` remains the outer human opt-in. The post-deploy gate is strict, mandatory, and prints the `wrangler rollback` command when it fails.
 
-"Bootstrap-tolerant" only covers a target that is _unreachable_. If a Worker is already answering at `DEMO_PREFLIGHT_URL` — including a stale, pre-epic deployment that predates this JSON API — the pre-deploy gate gets a real response, fails to parse it as the expected JSON, and hard-fails before the real deploy step runs. The [operator runbook](../../docs/enable-public-uploads-runbook.md) has the check and the resolution for that case.
+"Bootstrap-tolerant" covers two cases: a target that is _unreachable_, and a target that answers with a body that is not readiness JSON at all — a stale, pre-epic deployment, or the static-asset layer serving the SPA shell. Both mean "this Worker's readiness endpoint is not live here yet", so the pre-deploy gate warns and proceeds; the deploy replaces whatever is there. The line it draws is parseability: a body that parses means this Worker answered, so a failed check in it is real and hard-fails. A `401`, a `404`, or any other answered status also hard-fails. The [operator runbook](../../docs/enable-public-uploads-runbook.md) has the full table.
 
 ### Deployment secrets
 

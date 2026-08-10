@@ -117,11 +117,19 @@ function nonNegativeInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+/**
+ * Parses the readiness body, or returns `undefined` when the response is not
+ * JSON at all. A non-JSON 2xx means something other than this Worker's
+ * readiness endpoint is answering — a stale deployment, or the static-asset
+ * layer serving the SPA shell — so it is a "not this Worker yet" signal rather
+ * than "this Worker is broken". The caller decides whether that is tolerable;
+ * a body that does parse is always validated strictly.
+ */
 async function readReadinessBody(response) {
   try {
     return await response.json();
   } catch {
-    throw new Error("Production readiness did not return a JSON body.");
+    return undefined;
   }
 }
 
@@ -168,13 +176,24 @@ export async function demoPreflight({
 
     if (response) {
       if (response.ok) {
-        validateReadiness(await readReadinessBody(response));
-        log("Cloudflare demo deployment preflight passed.");
-        return { status: "passed" };
-      }
-      unreachableReason = bootstrapResponseReason(response.status, await response.text());
-      if (!unreachableReason) {
-        throw new Error(`Production Worker readiness request failed (${response.status}).`);
+        const body = await readReadinessBody(response);
+        if (body !== undefined) {
+          validateReadiness(body);
+          log("Cloudflare demo deployment preflight passed.");
+          return { status: "passed" };
+        }
+        // Reachable, but not speaking the readiness contract. At the time this
+        // was written the production hostname served a stale pre-API build that
+        // answered every /api/* path with the SPA shell, so a first CI-driven
+        // rollout would never have got past this gate. Tolerable only under
+        // DEMO_PREFLIGHT_ALLOW_BOOTSTRAP, i.e. pre-deploy; the strict
+        // post-deploy gate still rejects it.
+        unreachableReason = `the target answered HTTP ${response.status} with a non-JSON body, so this Worker's readiness endpoint is not live at the target yet`;
+      } else {
+        unreachableReason = bootstrapResponseReason(response.status, await response.text());
+        if (!unreachableReason) {
+          throw new Error(`Production Worker readiness request failed (${response.status}).`);
+        }
       }
     }
 

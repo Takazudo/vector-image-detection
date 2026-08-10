@@ -29,7 +29,7 @@ ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
 
    deploy 用 secret も同時に用意します。`AUTH_PASSWORD`、`AUTH_PASS_COOKIE`、`DEMO_PREFLIGHT_TOKEN`（deploy 後の `OPERATOR_PREFLIGHT_TOKEN`）の 3 つを repository secret に入れます。gate secret 2 つは prefix を付けません。すでにその名前で repository secret に存在し、local の `.env` でも同じ key を使うためです。CI は `wrangler deploy --secrets-file` で version と一緒に upload するので、dashboard での手動設定は不要です。gate secret が欠けた production Worker は serve を拒否します。
 
-   deploy 前の gate は「まだ deploy されていない」状態だけを許容します。name が解決しない、connection が拒否される、Cloudflare の 1000 番台 edge error が返る場合は `::warning::` にして先へ進みます。応答がある target — `401` や、check が fail している `200` を含む — は従来どおり job を止めます。初回 deploy だけは verification より先に traffic が切り替わりますが、password wall が公開を防ぎ、`DEMO_DEPLOYMENT_ENABLED` が人による opt-in として残り、deploy 後の strict gate が必ず走って失敗時に rollback command を出力します。
+   deploy 前の gate は「この Worker の readiness endpoint がまだそこに無い」状態を許容します。name が解決しない、connection が拒否される、Cloudflare の 1000 番台 edge error が返る場合に加えて、readiness JSON として parse できない body を返す `200`（旧 build や SPA shell が応答している状態）も同じ扱いで `::warning::` にして先へ進み、deploy がその Worker を置き換えます。境界は parse できるかどうかです。parse できる body はこの Worker が応答した証拠なので、check が fail していれば従来どおり job を止めます。`401` や `404` などの応答も止めます。初回 deploy だけは verification より先に traffic が切り替わりますが、password wall が公開を防ぎ、`DEMO_DEPLOYMENT_ENABLED` が人による opt-in として残り、deploy 後の strict gate が必ず走って失敗時に rollback command を出力します。
 
 10. **public writes を有効化する。** preflight と acknowledgement 後にのみ generated production config が true を設定し deploy します。deploy 後は一つの upload、処理状態、media authorization、human tag exact search、AI-word exact search、related degradation を運用者が記録して確認します。この live smoke test は provisioning 前には「完了」と宣言しません。
 

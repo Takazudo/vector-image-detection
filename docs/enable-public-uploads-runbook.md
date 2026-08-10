@@ -170,40 +170,42 @@ nothing to production — never use it here. The generated file
 (`.wrangler.production.generated.json`) is gitignored and mode `0600`; delete it locally once
 you're done if you'd rather not leave real resource names on disk.
 
-## 6. Check what is already live at `DEMO_PREFLIGHT_URL` before you flip the switch
+## 6. Know what is already live at `DEMO_PREFLIGHT_URL`
 
-The pre-deploy gate's bootstrap tolerance (step 8 below) only covers an _unreachable_ target —
-DNS failure, connection refused, or a Cloudflare 1000-series edge error. It does **not** cover a
-target that answers with something other than the expected JSON, and as of this writing the
-production domain is not empty:
+This rollout is an _upgrade_, not a true first deploy. The production domain is not empty:
 
 ```sh
-curl -s https://vector-image-detection.takazudomodular.com/api/v1/health
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' \
+  https://vector-image-detection.takazudomodular.com/api/v1/health
 ```
 
-This currently returns the SPA shell's HTML, not the `{version, status, service, now}` JSON body
-`router.ts` defines — confirmed live while writing this runbook, including on
-`/api/v1/operator/readiness` itself, which also answers `200` with the same HTML regardless of the
-`authorization` header. That is a pre-epic deployment predating the JSON API and the auth gate,
-consistent with the root README's existing "The production Worker is deliberately configured with
-public writes off" — there has already been a Worker at this domain, this rollout is an _upgrade_
-of it, not a true first deploy.
+At the time of writing that answers `200 text/html` — the SPA shell, not the
+`{version, status, service, now}` JSON body `router.ts` defines. `/api/v1/operator/readiness`
+behaves the same way regardless of the `authorization` header. That is a pre-epic deployment
+predating the JSON API and the auth gate.
 
-**This means the pre-deploy gate will not treat this domain as bootstrapping.** It will get a real
-`200` response, fail to parse it as JSON, and `demoPreflight` will throw before the real `wrangler
-deploy` step ever runs — blocking the push you make in step 7 below, indefinitely, until this is
-resolved. Re-run the two `curl` checks above right before step 7; if either still returns HTML
-instead of JSON, clear the way first:
+**The pre-deploy gate handles this.** A reachable target that answers with a non-JSON body is
+treated as "this Worker's readiness endpoint is not live here yet" — the same bootstrap class as
+an unresolved hostname — so the gate downgrades to a `::warning::` and the deploy proceeds. The
+deploy then replaces the stale Worker in place; you do **not** need to delete anything first.
 
-```sh
-pnpm --filter @vector-image-detection/demo exec wrangler delete --name vector-image-detection-demo
-```
+The distinction the gate draws is between _unparseable_ and _failing_:
 
-This removes the stale Worker (and its custom-domain route); the next deploy recreates both from
-`wrangler.production.jsonc`. It is destructive to whatever is live there now — confirm with
-whoever owns the Cloudflare account that nothing depends on the current deployment before running
-it. This one-off situation is why the check is called out here rather than left implicit in the
-"bootstrap-tolerant" description below.
+| Pre-deploy response                                            | Result                        |
+| -------------------------------------------------------------- | ----------------------------- |
+| DNS failure, connection refused, Cloudflare 1000-series, `530` | bootstrap → warn and continue |
+| `200` with a non-JSON body (a stale build, the SPA shell)      | bootstrap → warn and continue |
+| `200` with valid readiness JSON reporting a failed check       | **hard fail**                 |
+| `401`, `404`, or any other answered status                     | **hard fail**                 |
+
+A body that parses means this Worker answered, so a failure in it is real and blocks the deploy.
+A body that does not parse means something else is answering.
+
+None of this relaxes the **post-deploy** gate, which runs with bootstrap tolerance off: after the
+deploy, the freshly deployed Worker must return fully passing readiness JSON or the job goes red
+and prints the rollback command. On a bootstrap run that does mean traffic switches before
+verification — the password wall is the compensating control, since nothing is publicly reachable
+without it.
 
 ## 7. Turn on the deploy job
 
