@@ -12,6 +12,7 @@
     "ACK_REACTIVE_PURGE_ONLY": "false",
     "OPERATOR_PREFLIGHT_TOKEN": "worker-test-only",
   },
+  "secrets": { "required": ["AUTH_PASSWORD", "AUTH_PASS_COOKIE"] },
   "d1_databases": [
     {
       "binding": "DB",

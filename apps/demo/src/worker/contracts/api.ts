@@ -162,7 +162,8 @@ export type ReadinessCheckName =
   | "vectorize"
   | "rate_limit"
   | "migrations"
-  | "operator_acknowledgements";
+  | "operator_acknowledgements"
+  | "auth_gate";
 
 export interface ReadinessCheck {
   name: ReadinessCheckName;

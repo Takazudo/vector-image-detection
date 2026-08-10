@@ -57,12 +57,36 @@ pnpm --filter @vector-image-detection/demo run deploy:dry-run:production
 
 ## Later production provisioning and release
 
-The checked-in production config contains inert placeholders and `PUBLIC_WRITES_ENABLED: "false"`. Never edit it with a real account ID or resource name. Use CI/release environment variables to render `.wrangler.production.generated.json` only after an operator has provisioned the resources named in the [operator guide](../docs/src/content/docs/guides/demo-and-own-photos.mdx).
+The checked-in production config contains inert placeholders and `PUBLIC_WRITES_ENABLED: "false"`. Never edit it with a real account ID or resource name. Use CI/release environment variables to render `.wrangler.production.generated.json` only after an operator has provisioned the resources named in the [operator guide](../docs/src/content/docs/guides/demo-and-own-photos.mdx). For the exact, ordered, copy-pasteable list of remaining human actions, see the [operator runbook](../../docs/enable-public-uploads-runbook.md).
+
+The password wall (`AUTH_PASSWORD` / `AUTH_PASS_COOKIE`, below) is a precondition of turning public writes on, not an independent feature: it is what keeps a bootstrap deploy from being publicly reachable before its post-deploy readiness gate has run. The `/api/v1/operator/**` prefix (readiness, purge) is exempt from that gate — see `isOperatorPath` / `OPERATOR_PATH_PREFIX` in `src/worker/router.ts`. The exemption exists because its own bearer-token check is strictly stronger than the password cookie, because the preflight and purge tooling both depend on reaching it, and because it must keep working even when the password gate itself is misconfigured, so readiness can report exactly that.
 
 The deploy workflow has two independent jobs:
 
 1. Docs build, dry-run, and deploy without the demo readiness gate.
-2. Demo dry-run, then authenticated `GET /api/v1/operator/readiness` preflight, then deploy—but only after an operator explicitly sets the repository variable `DEMO_DEPLOYMENT_ENABLED=true`. Leave it unset while account provisioning is deferred; the demo job will be skipped without turning the docs workflow red.
+2. Demo render, dry-run, authenticated `GET /api/v1/operator/readiness` preflight, deploy, then a second strict readiness gate against what was just deployed—but only after an operator explicitly sets the repository variable `DEMO_DEPLOYMENT_ENABLED=true`. Leave it unset while account provisioning is deferred; the demo job will be skipped without turning the docs workflow red.
+
+The demo job renders `.wrangler.production.generated.json` once and both dry-runs and deploys that same file, so a green dry-run covers the real resource substitutions rather than the inert template.
+
+### The two readiness gates
+
+The pre-deploy gate interrogates the _already deployed_ Worker, which does not exist before the first-ever deploy. It is therefore bootstrap-tolerant: a target that does not resolve, refuses the connection, or answers a Cloudflare 1000-series edge error downgrades to a `::warning::` and the job continues. A target that answers with a readiness body reporting a `401` or a failed check still fails the job, so a live, broken demo is never deployed over silently. The exact boundary is below.
+
+On a bootstrap run this means traffic switches before verification. The password wall is the compensating control (nothing is publicly reachable even if the deploy is wrong) and `DEMO_DEPLOYMENT_ENABLED` remains the outer human opt-in. The post-deploy gate is strict, mandatory, and prints the `wrangler rollback` command when it fails.
+
+"Bootstrap-tolerant" covers two cases: a target that is _unreachable_, and a target that answers with a body that is not readiness JSON at all — a stale, pre-epic deployment, or the static-asset layer serving the SPA shell. Both mean "this Worker's readiness endpoint is not live here yet", so the pre-deploy gate warns and proceeds; the deploy replaces whatever is there. The line it draws is parseability: a body that parses means this Worker answered, so a failed check in it is real and hard-fails. A `401`, a `404`, or any other answered status also hard-fails. One further allowance covers schema drift — the already-running Worker cannot report a readiness check the release being shipped introduces, so a _missing_ required check is warned about rather than fatal pre-deploy, otherwise no release that adds a check could ever deploy itself. Only absence is forgiven; a reported check that fails still blocks. The [operator runbook](../../docs/enable-public-uploads-runbook.md) has the full table.
+
+### Deployment secrets
+
+Secrets are uploaded with the version itself via `wrangler deploy --secrets-file`, not through `wrangler secret put`, which cannot create a Worker that does not exist yet and would otherwise leave a window where the Worker serves ungated. CI stages the file under `RUNNER_TEMP` at mode 600 and removes it in an `always()` step.
+
+| Repository secret      | Deployed name              | Purpose                                                         |
+| ---------------------- | -------------------------- | --------------------------------------------------------------- |
+| `AUTH_PASSWORD`        | `AUTH_PASSWORD`            | Password wall; a production Worker without it refuses to serve. |
+| `AUTH_PASS_COOKIE`     | `AUTH_PASS_COOKIE`         | Fixed cookie value that lets CI and agents skip the prompt.     |
+| `DEMO_PREFLIGHT_TOKEN` | `OPERATOR_PREFLIGHT_TOKEN` | Bearer token for the operator readiness and purge endpoints.    |
+
+The two gate secrets deliberately keep their un-prefixed names: they already exist on the repository under exactly those names and are also the keys used in the local `.env`, so one name covers CI, the deployed Worker, and local dev.
 
 `pnpm run cloudflare:demo-preflight` requires `DEMO_PREFLIGHT_URL`, `DEMO_PREFLIGHT_TOKEN`, and exact values for all three acknowledgements:
 

@@ -98,6 +98,7 @@ describe("operator purge durability", () => {
           acknowledgeAnonymousPublicWrites: false,
           acknowledgeRetainedImageMetadata: false,
           acknowledgeReactivePurgeOnlyModeration: false,
+          authGateConfigured: false,
         }),
       },
     } as unknown as PlatformProviders;
