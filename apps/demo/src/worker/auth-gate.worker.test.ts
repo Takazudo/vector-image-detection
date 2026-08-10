@@ -220,12 +220,29 @@ describe("auth gate submission", () => {
     expect(response?.headers.get("set-cookie")).toBeNull();
   });
 
-  it("rejects an unparseable or oversized body without a cookie", async () => {
-    const unparseable = await handleAuthGate(
+  it("re-encodes a validated next so the Location header stays a byte string", async () => {
+    const response = await handleAuthGate(submit(PASSWORD, "/写真?tag=猫"), activeEnv());
+    expect(response?.status).toBe(302);
+    expect(response?.headers.get("location")).toBe("/%E5%86%99%E7%9C%9F?tag=%E7%8C%AB");
+  });
+
+  it("rejects a foreign media type, an unparseable body, and an oversized body", async () => {
+    const foreignMediaType = await handleAuthGate(
       new Request("https://demo.test/__auth", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ password: PASSWORD }),
+      }),
+      activeEnv(),
+    );
+    expect(foreignMediaType?.status).toBe(401);
+    expect(foreignMediaType?.headers.get("set-cookie")).toBeNull();
+
+    const unparseable = await handleAuthGate(
+      new Request("https://demo.test/__auth", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: "%%%not-a-form%%%",
       }),
       activeEnv(),
     );

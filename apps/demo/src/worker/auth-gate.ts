@@ -128,11 +128,13 @@ function hasAuthCookie(header: string | null, expected: string): boolean {
  * The login form posts `application/x-www-form-urlencoded`, so the body is
  * parsed directly rather than through `formData()` — that keeps the size guard
  * meaningful, since a streamed request carries no `content-length` to check.
- * Anything unreadable, oversized, or otherwise malformed degrades to an empty
- * submission, which the password compare then rejects.
+ * Anything of another media type, unreadable, oversized, or otherwise malformed
+ * degrades to an empty submission, which the password compare then rejects.
  */
 async function readSubmission(request: Request): Promise<{ password: string; next: string }> {
   const empty = { password: "", next: "" };
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
+  if (contentType !== "application/x-www-form-urlencoded") return empty;
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (Number.isFinite(declaredLength) && declaredLength > MAXIMUM_SUBMISSION_BYTES) return empty;
   let body: ArrayBuffer;
@@ -158,7 +160,7 @@ async function passwordMatches(provided: string, expected: string): Promise<bool
 
 function grantAccess(next: string, cookieValue: string): Response {
   const headers = gateHeaders();
-  headers.set("location", next);
+  headers.set("location", locationValue(next));
   headers.append(
     "set-cookie",
     `${AUTH_COOKIE_NAME}=${cookieValue}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}; HttpOnly; Secure; SameSite=Lax`,
@@ -168,8 +170,21 @@ function grantAccess(next: string, cookieValue: string): Response {
 
 function redirectTo(next: string): Response {
   const headers = gateHeaders();
-  headers.set("location", next);
+  headers.set("location", locationValue(next));
   return new Response(null, { status: 302, headers });
+}
+
+/**
+ * `validateNext` returns a *decoded* path, but a header value is a byte string:
+ * workerd warns that a non-ASCII `Location` would raise a TypeError in a real
+ * browser, so the validated path is re-encoded on its way into the header.
+ */
+function locationValue(next: string): string {
+  try {
+    return encodeURI(next);
+  } catch {
+    return "/";
+  }
 }
 
 function loginChallenge(next: string, rejected: boolean): Response {
