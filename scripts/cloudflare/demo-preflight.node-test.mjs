@@ -255,10 +255,34 @@ test("bootstrap tolerance never excuses a Worker that answered", async () => {
   );
 });
 
-test("bootstrap tolerance never excuses a failing readiness body", async () => {
+test("pre-deploy deploys over a deployment that fails the readiness contract", async () => {
+  // Pre-deploy interrogates the version being REPLACED. A writes-off deployment
+  // is precisely what the release turning writes on has to replace, so blocking
+  // here would make the gate refuse the deploy it exists to authorize.
+  const warnings = [];
+  const result = await demoPreflight({
+    environment: bootstrapEnvironment,
+    fetchImpl: async () =>
+      Response.json({
+        status: "ready",
+        environment: "production",
+        publicWritesEnabled: false,
+        models: EXPECTED_MODELS,
+        checks: REQUIRED_READINESS_CHECKS.map((name) => ({ name, status: "pass" })),
+      }),
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.replacedUnhealthy, true);
+  assert.match(warnings.join("\n"), /public writes are not explicitly enabled/);
+});
+
+test("the strict post-deploy gate still rejects a failing readiness body", async () => {
   await assert.rejects(
     demoPreflight({
-      environment: bootstrapEnvironment,
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
       fetchImpl: async () =>
         Response.json({
           status: "ready",
@@ -304,7 +328,7 @@ test("a failing readiness response explains itself in the error message", async 
   // is what turned a single failing check into a live debugging session.
   await assert.rejects(
     demoPreflight({
-      environment: bootstrapEnvironment,
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
       fetchImpl: async () =>
         Response.json(
           {
@@ -329,6 +353,37 @@ test("a failing readiness response explains itself in the error message", async 
       return true;
     },
   );
+});
+
+test("pre-deploy warns with the same detail instead of blocking the remedy", async () => {
+  // The exact failure that deadlocked the first real rollout: production was
+  // unhealthy, the fix was on main, and the gate refused to ship it *because*
+  // production was unhealthy. Pre-deploy must report and continue.
+  const warnings = [];
+  const result = await demoPreflight({
+    environment: bootstrapEnvironment,
+    fetchImpl: async () =>
+      Response.json(
+        {
+          status: "not_ready",
+          environment: "production",
+          publicWritesEnabled: true,
+          models: EXPECTED_MODELS,
+          checks: [
+            { name: "d1", status: "pass" },
+            { name: "vectorize", status: "fail", detail: "vectorize binding check failed: boom" },
+          ],
+        },
+        { status: 503 },
+      ),
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.replacedUnhealthy, true);
+  assert.match(warnings.join("\n"), /vectorize \(fail\)/);
+  assert.match(warnings.join("\n"), /boom/);
 });
 
 test("a non-readiness error body does not break the error message", async () => {
@@ -369,12 +424,13 @@ test("pre-deploy accepts a deployed Worker that predates a newly required check"
   assert.match(warnings[0], /predates this release/);
 });
 
-test("pre-deploy still rejects a check the old Worker reports as failing", async () => {
-  // Only absence is forgiven. A check the deployed Worker does report, and
-  // reports as failing, is a real failure at any time.
+test("the strict post-deploy gate rejects a check reported as failing", async () => {
+  // Post-deploy this is the new version reporting itself broken — always fatal.
+  // Pre-deploy the same body describes the version being replaced, which the
+  // "deploys over" tests above cover.
   await assert.rejects(
     demoPreflight({
-      environment: bootstrapEnvironment,
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
       fetchImpl: async () =>
         Response.json({
           status: "ready",
@@ -392,12 +448,10 @@ test("pre-deploy still rejects a check the old Worker reports as failing", async
   );
 });
 
-test("a 200 whose JSON reports a failure is never bootstrap-tolerated", async () => {
-  // The contract distinction: an unparseable body means something else is
-  // answering; a parseable body means this Worker answered and is broken.
+test("the strict post-deploy gate rejects a 200 whose JSON reports not_ready", async () => {
   await assert.rejects(
     demoPreflight({
-      environment: bootstrapEnvironment,
+      environment: { ...bootstrapEnvironment, DEMO_PREFLIGHT_ALLOW_BOOTSTRAP: "false" },
       fetchImpl: async () =>
         Response.json({
           status: "not_ready",
