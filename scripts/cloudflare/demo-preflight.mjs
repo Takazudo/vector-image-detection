@@ -213,7 +213,21 @@ export async function demoPreflight({
       if (response.ok) {
         const body = await readReadinessBody(response);
         if (body !== undefined) {
-          const { skippedChecks } = validateReadiness(body, { allowSchemaDrift: allowBootstrap });
+          let skippedChecks = [];
+          try {
+            ({ skippedChecks } = validateReadiness(body, { allowSchemaDrift: allowBootstrap }));
+          } catch (error) {
+            // Same rule as the non-ok branch below: pre-deploy is looking at the
+            // version being replaced, so its state must never block the deploy.
+            // A 200 can still fail validation — e.g. a writes-off deployment,
+            // which is exactly what the release turning writes on has to replace.
+            if (!allowBootstrap) throw error;
+            warn(
+              `::warning::The currently deployed Worker did not satisfy the readiness contract (${error.message}) Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
+            );
+            log("Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).");
+            return { status: "passed", replacedUnhealthy: true };
+          }
           if (skippedChecks.length > 0) {
             warn(
               `::warning::The deployed Worker does not report ${skippedChecks.join(", ")}, so it predates this release. Everything it does report passed; the post-deploy gate requires the full set.`,
@@ -236,8 +250,26 @@ export async function demoPreflight({
           // A 503 readiness response carries the check list that explains it.
           // Discarding it turned every failure into a live debugging session,
           // so surface the failing check names and their details here.
+          const summary = failingCheckSummary(body);
+          // Tolerate only a body that is recognizably THIS Worker's readiness
+          // contract reporting itself unhealthy. A 401 or 403 carries no such
+          // body: that is a bad DEMO_PREFLIGHT_TOKEN, a configuration error
+          // which would also break the post-deploy gate, so it must still block.
+          if (allowBootstrap && summary) {
+            // Pre-deploy. This interrogates the version being REPLACED, so an
+            // unhealthy answer must not block: refusing to deploy over a broken
+            // deployment makes a production outage self-perpetuating — the
+            // remedy is exactly what cannot ship. It also says nothing about the
+            // version being shipped, which only the strict post-deploy gate can
+            // judge. Report it loudly and continue.
+            warn(
+              `::warning::The currently deployed Worker is not ready (HTTP ${response.status}).${summary} Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
+            );
+            log("Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).");
+            return { status: "passed", replacedUnhealthy: true };
+          }
           throw new Error(
-            `Production Worker readiness request failed (${response.status}).${failingCheckSummary(body)}`,
+            `Production Worker readiness request failed (${response.status}).${summary}`,
           );
         }
       }
