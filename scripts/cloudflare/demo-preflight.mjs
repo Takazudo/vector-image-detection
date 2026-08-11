@@ -308,6 +308,15 @@ export async function demoPreflight({
                 // an id, exactly as it cannot report a newly added check. The
                 // body it did send passed in full, which is the strongest
                 // evidence available, so the settle ends in a pass.
+                //
+                // Known and deliberately bounded: an old version still serving a
+                // healthy body here is accepted while a broken new version may be
+                // activating — today's gate exactly. It is reachable on ONE
+                // release, the one adding the binding, because every version
+                // deployed after that reports an id and lands on `current` or
+                // `stale` instead. Failing here instead would be safer for that
+                // single release and permanently brittle afterwards, since any
+                // config that drops the binding would wedge the deploy.
                 warn(
                   `::warning::The deployed Worker reports no version id, so it could not be confirmed as ${expectedVersionId}; it predates the version_metadata binding. Its readiness passed in full, so the deployment is accepted.`,
                 );
