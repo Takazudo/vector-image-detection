@@ -10,5 +10,6 @@ coverage/
 test-results/
 *.tsbuildinfo
 .wrangler/
+.wrangler-e2e-state/
 .wrangler.production.generated.json
 .env

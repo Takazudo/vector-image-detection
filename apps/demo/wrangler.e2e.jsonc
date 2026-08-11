@@ -1,0 +1,63 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vector-image-detection-demo-e2e",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist",
+    "html_handling": "none",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true,
+  },
+  // No `ai`/`vectorize`: Vectorize has no local emulation and `ai: { remote: true }` forces a
+  // remote proxy session that hard-fails credential-free. Deep readiness reports those two
+  // checks as failing/uncheckable by construction here; the e2e specs assert specific route
+  // behaviours instead of full readiness.
+  "secrets": { "required": ["AUTH_PASSWORD", "AUTH_PASS_COOKIE"] },
+  "vars": {
+    "APP_ENV": "ci",
+    "PUBLIC_WRITES_ENABLED": "true",
+    "ACK_ANONYMOUS_PUBLIC_WRITES": "true",
+    "ACK_RETAINED_IMAGE_METADATA": "true",
+    "ACK_REACTIVE_PURGE_ONLY": "true",
+    "OPERATOR_PREFLIGHT_TOKEN": "e2e-worker-test-only",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vector-image-detection-demo-e2e",
+      "database_id": "00000000-0000-0000-0000-000000000004",
+      "migrations_dir": "./migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "vector-image-detection-demo-e2e",
+    },
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "PHOTO_QUEUE", "queue": "vector-image-detection-photo-jobs-e2e" },
+      { "binding": "PHOTO_DLQ", "queue": "vector-image-detection-photo-dlq-e2e" },
+    ],
+    "consumers": [
+      {
+        "queue": "vector-image-detection-photo-jobs-e2e",
+        "max_batch_size": 5,
+        "max_batch_timeout": 5,
+        "max_retries": 8,
+        "dead_letter_queue": "vector-image-detection-photo-dlq-e2e",
+      },
+    ],
+  },
+  "ratelimits": [
+    {
+      "name": "WRITE_RATE_LIMIT",
+      "namespace_id": "1000004",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
+}
