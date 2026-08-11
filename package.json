@@ -13,6 +13,8 @@
     "test:worker": "pnpm --filter @vector-image-detection/demo run test:worker",
     "test:dom": "pnpm --filter @vector-image-detection/demo run test:dom",
     "test:e2e": "pnpm --filter @vector-image-detection/demo run test:e2e",
+    "test:e2e:mocked": "pnpm --filter @vector-image-detection/demo run test:e2e:mocked",
+    "test:e2e:worker": "pnpm --filter @vector-image-detection/demo run test:e2e:worker",
     "test:output": "pnpm --filter @vector-image-detection/demo run test:output",
     "test:scripts": "node --test scripts/lib/*.node-test.mjs scripts/cloudflare/*.node-test.mjs apps/demo/scripts/render-production-config.node-test.mjs",
     "build": "pnpm -r run build",

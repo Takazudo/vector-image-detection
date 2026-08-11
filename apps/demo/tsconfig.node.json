@@ -25,9 +25,11 @@
   "include": [
     "zfb.config.ts",
     "playwright.config.ts",
+    "playwright.worker.config.ts",
     "vitest.*.config.ts",
     "fixtures/**/*.ts",
     "tests/**/*.ts",
-    "e2e/**/*.ts"
+    "e2e/**/*.ts",
+    "e2e-worker/**/*.ts"
   ]
 }
