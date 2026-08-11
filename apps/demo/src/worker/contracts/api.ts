@@ -183,6 +183,14 @@ export interface ReadinessResponse {
     vectorMetric: "cosine";
   };
   checks: ReadinessCheck[];
+  /**
+   * The Worker version that produced this response, from the `version_metadata`
+   * binding. Deliberately absent from the unauthenticated `/api/v1/readiness`
+   * body — only the operator-authenticated deep readiness reports it, because
+   * only the deployment gate needs it. Optional because a deployment may not
+   * configure the binding at all.
+   */
+  workerVersionId?: string;
 }
 
 export interface OperatorPurgeResponse {
