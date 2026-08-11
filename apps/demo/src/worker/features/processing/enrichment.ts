@@ -254,12 +254,7 @@ async function loadPhoto(
 }
 
 export function parseVisionOutput(value: unknown): { caption: string; words: string[] } {
-  let candidate = value;
-  if (typeof candidate === "object" && candidate !== null) {
-    if ("answer" in candidate) candidate = (candidate as { answer: unknown }).answer;
-    else if ("description" in candidate)
-      candidate = (candidate as { description: unknown }).description;
-  }
+  let candidate = unwrapVisionPayload(value);
   if (typeof candidate === "string") {
     if (new TextEncoder().encode(candidate).byteLength > VALIDATION_LIMITS.maximumAiOutputBytes) {
       throw new ProcessingError(
@@ -275,7 +270,15 @@ export function parseVisionOutput(value: unknown): { caption: string; words: str
     try {
       candidate = JSON.parse(cleaned);
     } catch {
-      throw new ProcessingError("malformed_ai_output", "Vision output was not valid JSON.", false);
+      const recovered = recoverTruncatedJson(cleaned);
+      if (recovered === undefined) {
+        throw new ProcessingError(
+          "malformed_ai_output",
+          "Vision output was not valid JSON.",
+          false,
+        );
+      }
+      candidate = recovered;
     }
   }
   if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate)) {
@@ -319,6 +322,77 @@ export function parseVisionOutput(value: unknown): { caption: string; words: str
   if (words.length === 0)
     throw new ProcessingError("malformed_ai_output", "Vision output had no usable words.", false);
   return { caption, words };
+}
+
+/**
+ * Workers AI nests the pinned Moondream model's payload one level deep — the
+ * binding answers `{result: {answer, caption, …}, usage}` — so the generated
+ * text is only reachable after peeling the envelope and then the payload key.
+ * `description` covers the shape other vision models document. Peeling is
+ * layer-by-layer rather than a single choice because envelope and payload key
+ * are independent; a nullish layer is left in place so the caller still reports
+ * the outer shape it actually received.
+ */
+function unwrapVisionPayload(value: unknown): unknown {
+  let candidate = value;
+  for (const key of ["result", "answer", "description"]) {
+    if (typeof candidate !== "object" || candidate === null || !(key in candidate)) continue;
+    const unwrapped = (candidate as Record<string, unknown>)[key];
+    if (unwrapped !== null && unwrapped !== undefined) candidate = unwrapped;
+  }
+  return candidate;
+}
+
+/**
+ * Salvages a JSON object the model stopped emitting mid-value. Moondream can
+ * fall into a repetition loop and hit `max_tokens` (`finish_reason: "length"`),
+ * which leaves a syntactically incomplete but semantically usable answer — the
+ * caption and the completed array entries are all present. Retrying is futile
+ * because the run is temperature 0, so the truncated prefix is the only output
+ * that will ever exist for that image.
+ *
+ * Structural boundaries (a closed string literal, a closed object/array) are the
+ * only candidate cut points, walked newest-first and closed with whatever is
+ * still open. Every candidate must survive `JSON.parse` and then the same
+ * caption/word validation as untruncated output, so a prefix that only looks
+ * like JSON is rejected rather than salvaged. Returns `undefined` when nothing
+ * parses.
+ */
+function recoverTruncatedJson(text: string): unknown {
+  const boundaries: { end: number; closers: string }[] = [];
+  const open: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') {
+        inString = false;
+        boundaries.push({ end: index + 1, closers: [...open].reverse().join("") });
+      }
+      continue;
+    }
+    if (character === '"') inString = true;
+    else if (character === "{") open.push("}");
+    else if (character === "[") open.push("]");
+    else if (character === "}" || character === "]") {
+      open.pop();
+      boundaries.push({ end: index + 1, closers: [...open].reverse().join("") });
+    }
+  }
+  for (let index = boundaries.length - 1; index >= 0; index -= 1) {
+    const boundary = boundaries[index];
+    if (!boundary || boundary.closers.length === 0) continue;
+    const head = text.slice(0, boundary.end).replace(/[\s,]+$/, "");
+    try {
+      return JSON.parse(head + boundary.closers);
+    } catch {
+      // An incomplete key or value at this cut point; try an earlier boundary.
+    }
+  }
+  return undefined;
 }
 
 export function parseEmbedding(value: unknown): number[] {
