@@ -95,6 +95,7 @@ jobs:
       - name: Test production demo preflight gate
         run: >-
           node --test scripts/cloudflare/demo-preflight.node-test.mjs
+          scripts/cloudflare/assert-vectorize-index.node-test.mjs
           scripts/cloudflare/write-deploy-secrets.node-test.mjs
           scripts/cloudflare/deploy-workflow.node-test.mjs
           scripts/cloudflare/deployed-version.node-test.mjs
@@ -147,6 +148,20 @@ jobs:
           ACK_RETAINED_IMAGE_METADATA: ${{ vars.ACK_RETAINED_IMAGE_METADATA }}
           ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
         run: pnpm run cloudflare:demo-preflight
+
+      # Dimensions and metric are fixed at index creation and cannot drift on
+      # an existing index, but DEMO_VECTORIZE_INDEX_NAME is mutable repository
+      # configuration and can be re-pointed at a different, wrong-metric index
+      # — an operator action the runbook walks through. The deployed Worker has
+      # no Cloudflare API token, so this deploy-time check is the only place
+      # that can catch a repoint; see docs/enable-public-uploads-runbook.md.
+      # Hard failure on any mismatch — this check never downgrades to a warning.
+      - name: Assert Vectorize index dimensions and metric
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DEMO_VECTORIZE_INDEX_NAME: ${{ vars.DEMO_VECTORIZE_INDEX_NAME }}
+        run: node scripts/cloudflare/assert-vectorize-index.mjs
 
       # Secrets travel with the version via `wrangler deploy --secrets-file`.
       # `wrangler secret put` cannot be used: it mutates a live Worker, so it

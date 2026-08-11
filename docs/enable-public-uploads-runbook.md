@@ -26,6 +26,17 @@ while writing this runbook). Do not recreate those four — the password wall is
 the Cloudflare API token already has whatever scope it was issued with. The only secret you still
 need to create is `DEMO_PREFLIGHT_TOKEN` (step 4).
 
+**Unverified risk:** the `deploy-demo` job now also calls the Cloudflare API directly, at the
+"Assert Vectorize index dimensions and metric" step (`scripts/cloudflare/assert-vectorize-index.mjs`),
+to confirm the Vectorize index CI is about to deploy against still matches the pinned embedding
+model. That call requires the existing `CLOUDFLARE_API_TOKEN` to carry the **"Vectorize Read"**
+account permission (see "0a. Confirm the deploy token's Vectorize permission" below). No agent
+running this runbook has Cloudflare credentials, so **this could not be verified against the actual
+token** — only documented from Cloudflare's API reference. If the token lacks that permission, the
+step fails with `HTTP 401`/`403` and an error naming the exact permission and the token variable, so
+it is a two-minute fix, but it **will** block the next production deploy until fixed. Check this
+before merging.
+
 ## 0. Identify or provision the account resources
 
 The committed `apps/demo/wrangler.production.jsonc` only ever contains inert placeholders (a
@@ -103,10 +114,15 @@ Vectorize binding 'PHOTO_VECTORS' references index '<name>' which was not found.
 ```
 
 The dry-run will not catch it — dry-run does not resolve remote resources. So confirm explicitly,
-and check the dimensions and metric in the output rather than just the name. This manual check is
-also the only place the metric is ever verified: the `Vectorize` binding's `describe()` (V2) does not
-report the distance metric at runtime at all, so the deployed app's readiness checks can confirm
-dimensions but never metric — this creation-time check is the floor.
+and check the dimensions and metric in the output rather than just the name. Historically this manual
+check was also the only place the metric was ever verified: the `Vectorize` binding's `describe()`
+(V2) does not report the distance metric at runtime at all, so the deployed app's readiness checks
+can confirm dimensions but never metric. That is still true of the _runtime_ readiness endpoint —
+but every `deploy-demo` run now also machine-verifies dimensions and metric against the Cloudflare
+API directly, at the "Assert Vectorize index dimensions and metric" step (see "0a." below), so this
+creation-time check is now a **floor**, not the only guard: it catches a bad index at creation time,
+the deploy-time check catches an operator re-pointing `DEMO_VECTORIZE_INDEX_NAME` at a different,
+wrong-metric index later.
 
 ```sh
 cd <repository root>
@@ -121,6 +137,29 @@ in `wrangler.production.jsonc` and gets applied automatically on deploy — ther
 Use environment-specific names for everything above; do not point a production resource name at a
 local/preview one, and never commit a real resource name into `wrangler.production.jsonc` itself
 — it must stay the inert template.
+
+### 0a. Confirm the deploy token's Vectorize permission
+
+The "Assert Vectorize index dimensions and metric" step in `deploy-demo`
+(`scripts/cloudflare/assert-vectorize-index.mjs`) calls
+`GET /accounts/{account_id}/vectorize/v2/indexes/{index_name}` using the existing
+`CLOUDFLARE_API_TOKEN` secret — the same token `wrangler deploy` already uses, no new secret is
+introduced. That endpoint requires the token to carry the **"Vectorize Read"** permission (an
+account-scoped custom-token permission; in the Cloudflare dashboard token editor this is the
+Account resources row: **Account → Vectorize → Read**. "Vectorize Edit" also satisfies it, but
+grant Read only — this step never writes.).
+
+**This was not verified against the actual token while writing this runbook** — no Cloudflare
+credentials were available, and a token's permission scopes are not readable via `gh` or any repo
+tooling; they can only be checked in the Cloudflare dashboard. Before merging this change, open
+**My Profile → API Tokens** (or **Manage Account → API Tokens** if it is an account-owned token) and
+find the token whose value is stored as `CLOUDFLARE_API_TOKEN`. If its permission list does not
+already include "Vectorize Read" (or "Vectorize Edit"), edit the token to add "Vectorize Read" —
+this does not require rotating the secret's value, since editing permissions on an existing token
+does not change the token string. If you skip this check, the first production deploy after this
+change merges will fail at the "Assert Vectorize index dimensions and metric" step with an
+`HTTP 401`/`403` error that names the exact permission and the token variable — nothing will have
+deployed yet, so the failure is safe, but confirming ahead of time avoids the wasted CI run.
 
 ## 1. Set the seven `DEMO_*` resource-name repository variables
 
@@ -312,9 +351,14 @@ Re-running also re-runs `deploy-docs`, which is idempotent. If you would rather 
 git commit --allow-empty -m "chore: trigger demo deploy" && git push origin main
 ```
 
-Either way, watch the `deploy-demo` job. A failure at the **Deploy demo** step with `Verify the
-deployed demo` skipped means nothing was deployed and whatever was previously live is untouched —
-that is the safe failure shape, and step 0's Vectorize check is the usual cause.
+Either way, watch the `deploy-demo` job. A failure at **any** step before `Deploy demo` — including
+the new "Assert Vectorize index dimensions and metric" step — means nothing was deployed and
+whatever was previously live is untouched; that is the safe failure shape. A failure at
+"Assert Vectorize index dimensions and metric" itself means either a permission problem (see "0a."
+above) or a genuine dimensions/metric mismatch (the index needs to be re-created — dimensions and
+metric cannot be changed on an existing one) — its error message says which. A
+failure at the **Deploy demo** step itself with `Verify the deployed demo` skipped instead points at
+step 0's index-existence check (a typo'd `DEMO_VECTORIZE_INDEX_NAME`, most often).
 
 ## 8. What the bootstrap run will and will not verify
 
