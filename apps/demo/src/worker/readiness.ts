@@ -165,7 +165,15 @@ export async function deepReadiness(providers: PlatformProviders): Promise<Readi
     ),
   );
 
-  return response(settings.environment, settings.publicWritesEnabled, checks);
+  // Operator-authenticated only. The deployment gate uses this to prove the
+  // response came from the version that was just deployed rather than the one
+  // it replaced; the public endpoint must not disclose it.
+  return response(
+    settings.environment,
+    settings.publicWritesEnabled,
+    checks,
+    providers.versionMetadata?.id,
+  );
 }
 
 async function appendAsyncCheck(
@@ -192,6 +200,7 @@ function response(
   environment: ReadinessResponse["environment"],
   publicWritesEnabled: boolean,
   checks: ReadinessCheck[],
+  workerVersionId?: string,
 ): ReadinessResponse {
   return {
     version: "v1",
@@ -205,5 +214,9 @@ function response(
       vectorMetric: MODEL_CONFIG.vectorMetric,
     },
     checks,
+    // Omitted rather than set to undefined: the public endpoint's body must not
+    // carry the key at all, and callers of both endpoints compare against
+    // absence. `configurationReadiness` never passes an id.
+    ...(workerVersionId ? { workerVersionId } : {}),
   };
 }

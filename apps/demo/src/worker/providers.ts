@@ -30,6 +30,14 @@ export interface PlatformProviders {
   clock: Clock;
   ids: IdGenerator;
   operator: OperatorControls;
+  /**
+   * Optional because the `version_metadata` binding is not configured
+   * everywhere this Worker runs — a local config may omit it, and test doubles
+   * do not supply it. Nothing may fail a readiness check on its absence; the
+   * deployment gate treats an unreported version id as "unknown", never
+   * "wrong". See scripts/cloudflare/demo-preflight.mjs.
+   */
+  versionMetadata?: WorkerVersionMetadata;
 }
 
 export function createPlatformProviders(env: Env): PlatformProviders {
@@ -57,5 +65,6 @@ export function createPlatformProviders(env: Env): PlatformProviders {
     clock: { now: () => new Date() },
     ids: { generate: () => crypto.randomUUID() },
     operator: { settings: () => readRuntimeSettings(env) },
+    versionMetadata: env.WORKER_VERSION_METADATA,
   };
 }

@@ -505,6 +505,197 @@ test("the strict post-deploy gate retries an unresolved target before failing", 
   assert.deepEqual(delays, [40, 40]);
 });
 
+// --- version propagation ------------------------------------------------------
+// The post-deploy gate used to interrogate whatever answered 11 seconds after
+// `wrangler deploy` returned, which was routinely the version being replaced —
+// a false red on a healthy release, and a false green whenever a healthy old
+// version answered for a broken new one. Passing the just-deployed version id
+// closes both directions. These tests pin the asymmetry that keeps it safe:
+// a *different* id is proof and outranks readiness, an *absent* id proves
+// nothing and readiness still decides.
+
+const strictVersionedEnvironment = {
+  ...acknowledged,
+  DEMO_PREFLIGHT_URL: "https://demo.example.test",
+  DEMO_PREFLIGHT_TOKEN: "secret-value",
+  DEMO_PREFLIGHT_ATTEMPTS: "5",
+  DEMO_PREFLIGHT_RETRY_DELAY_MS: "40",
+  DEMO_PREFLIGHT_EXPECTED_VERSION_ID: "new-version",
+};
+
+function readinessBody({ workerVersionId, healthy = true, status = 200 } = {}) {
+  return Response.json(
+    {
+      status: "ready",
+      environment: "production",
+      publicWritesEnabled: healthy,
+      models: EXPECTED_MODELS,
+      checks: REQUIRED_READINESS_CHECKS.map((name) => ({ name, status: "pass" })),
+      ...(workerVersionId ? { workerVersionId } : {}),
+    },
+    { status },
+  );
+}
+
+test("a body from the expected version is graded immediately, bad or good", async () => {
+  let attempts = 0;
+  await assert.rejects(
+    demoPreflight({
+      environment: strictVersionedEnvironment,
+      fetchImpl: async () => {
+        attempts += 1;
+        return readinessBody({ workerVersionId: "new-version", healthy: false });
+      },
+      ...silent,
+    }),
+    /public writes are not explicitly enabled/,
+  );
+  assert.equal(attempts, 1, "the expected version's own verdict is never waited out");
+});
+
+test("a body from a different version is retried until the expected version answers", async () => {
+  let attempts = 0;
+  const result = await demoPreflight({
+    environment: strictVersionedEnvironment,
+    fetchImpl: async () => {
+      attempts += 1;
+      // The old version is answering, and answering *unhealthily*. Without the
+      // version id this is indistinguishable from the new version being broken,
+      // which is exactly the false red this design removes.
+      if (attempts < 3) return readinessBody({ workerVersionId: "old-version", healthy: false });
+      return readinessBody({ workerVersionId: "new-version" });
+    },
+    sleep: async () => {},
+    ...silent,
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(attempts, 3);
+});
+
+test("a stale version that never rolls over fails rather than passing on a timeout", async () => {
+  await assert.rejects(
+    demoPreflight({
+      environment: { ...strictVersionedEnvironment, DEMO_PREFLIGHT_ATTEMPTS: "2" },
+      fetchImpl: async () => readinessBody({ workerVersionId: "old-version" }),
+      sleep: async () => {},
+      ...silent,
+    }),
+    /still serving version old-version .* not the just-deployed new-version/,
+  );
+});
+
+test("a Worker reporting no version id still fails on attempt 1 for a bad body", async () => {
+  // The anti-subversion test. If "no version id" alone meant "retry", a deploy
+  // broken badly enough to drop the version_metadata binding would be waited
+  // out instead of failed — subverting the pinned rule that a Worker which
+  // answered with a bad readiness body is never retried.
+  let attempts = 0;
+  await assert.rejects(
+    demoPreflight({
+      environment: strictVersionedEnvironment,
+      fetchImpl: async () => {
+        attempts += 1;
+        return readinessBody({ healthy: false });
+      },
+      ...silent,
+    }),
+    /public writes are not explicitly enabled/,
+  );
+  assert.equal(attempts, 1);
+});
+
+test("a Worker reporting no version id fails on attempt 1 for a non-ok body too", async () => {
+  let attempts = 0;
+  await assert.rejects(
+    demoPreflight({
+      environment: strictVersionedEnvironment,
+      fetchImpl: async () => {
+        attempts += 1;
+        return new Response("nope", { status: 500 });
+      },
+      ...silent,
+    }),
+    /readiness request failed \(500\)/,
+  );
+  assert.equal(attempts, 1);
+});
+
+test("a healthy body with no version id settles for a bounded number of polls, then passes", async () => {
+  // An older Worker cannot report a field this release adds, so a fully passing
+  // body is the strongest evidence available once the settle budget is spent.
+  const delays = [];
+  const warnings = [];
+  let attempts = 0;
+  const result = await demoPreflight({
+    environment: strictVersionedEnvironment,
+    fetchImpl: async () => {
+      attempts += 1;
+      return readinessBody();
+    },
+    sleep: async (ms) => delays.push(ms),
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.versionUnreported, true);
+  // Two settles, so three fetches — bounded well inside the five allowed attempts.
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [40, 40]);
+  assert.match(warnings.join("\n"), /reports no version id/);
+});
+
+test("the settle ends the moment the expected version identifies itself", async () => {
+  let attempts = 0;
+  const warnings = [];
+  const result = await demoPreflight({
+    environment: strictVersionedEnvironment,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) return readinessBody();
+      return readinessBody({ workerVersionId: "new-version" });
+    },
+    sleep: async () => {},
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.versionUnreported, undefined);
+  assert.equal(attempts, 2);
+  assert.deepEqual(warnings, []);
+});
+
+test("an expected version id does not change how an undeployed target is treated", async () => {
+  // The "malformed / not-deployed-yet" row: existing rules only, no benign wait.
+  await assert.rejects(
+    demoPreflight({
+      environment: { ...strictVersionedEnvironment, DEMO_PREFLIGHT_ATTEMPTS: "2" },
+      fetchImpl: async () => new Response("<html>stale build</html>", { status: 200 }),
+      sleep: async () => {},
+      ...silent,
+    }),
+    /non-JSON body/,
+  );
+});
+
+test("the pre-deploy gate is untouched when no expected version is set", async () => {
+  // Nothing has been deployed yet at that point, so there is no version to
+  // expect; the gate must behave exactly as it did before this was added.
+  const warnings = [];
+  const result = await demoPreflight({
+    environment: bootstrapEnvironment,
+    fetchImpl: async () => readinessBody({ workerVersionId: "whatever-is-live", healthy: false }),
+    log: () => {},
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.equal(result.status, "passed");
+  assert.equal(result.replacedUnhealthy, true);
+  assert.match(warnings.join("\n"), /public writes are not explicitly enabled/);
+});
+
 test("retries do not wait out a Worker that answered with a bad readiness body", async () => {
   let attempts = 0;
   await assert.rejects(

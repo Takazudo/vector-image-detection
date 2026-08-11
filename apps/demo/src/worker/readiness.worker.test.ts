@@ -15,6 +15,13 @@ const GATE_COOKIE = `${AUTH_COOKIE_NAME}=worker-test-only`;
 /** Kept in sync with EXPECTED_MIGRATION in readiness.ts. */
 const APPLIED_MIGRATION = "0001_public_photo_library.sql";
 
+/** Shape of the `version_metadata` binding, which workerd fills in at runtime. */
+const VERSION_METADATA = {
+  id: "0e5bbd12-3f4a-4b8c-9d1e-2f3a4b5c6d7e",
+  tag: "test-tag",
+  timestamp: "2026-08-01T00:00:00.000Z",
+};
+
 const acknowledged = {
   acknowledgeAnonymousPublicWrites: true,
   acknowledgeRetainedImageMetadata: true,
@@ -72,6 +79,20 @@ describe("public configuration readiness", () => {
 
     expect(response.status).toBe("ready");
     expect(checkOf(response, "auth_gate").status).toBe("pass");
+  });
+
+  it("never discloses the Worker version, even when the binding supplies one", () => {
+    // This endpoint is unauthenticated. The version id is only there so the
+    // deployment gate can tell the new version from the one it replaced, and
+    // the gate is authenticated — so an anonymous caller must not be handed a
+    // precise fingerprint of what is running.
+    const response = configurationReadiness(
+      providers(enabledProduction, { ...healthyBindings(), versionMetadata: VERSION_METADATA }),
+    );
+
+    expect(response.workerVersionId).toBeUndefined();
+    expect("workerVersionId" in response).toBe(false);
+    expect(JSON.stringify(response)).not.toContain(VERSION_METADATA.id);
   });
 
   it("never discloses which access-gate secret is missing", () => {
@@ -163,6 +184,25 @@ describe("deep operator readiness", () => {
     expect(failedChecks(response)).toEqual(["vectorize"]);
   });
 
+  it("names the Worker version that answered, so CI can tell it from its predecessor", async () => {
+    const response = await deepReadiness(
+      providers(enabledProduction, { ...healthyBindings(), versionMetadata: VERSION_METADATA }),
+    );
+
+    expect(response.workerVersionId).toBe(VERSION_METADATA.id);
+  });
+
+  it("stays ready when the version_metadata binding is absent", async () => {
+    // The binding is not configured everywhere this Worker runs, and its absence
+    // must never fail a check — the deployment gate treats an unreported version
+    // as "unknown" and falls back to grading the readiness body itself.
+    const response = await deepReadiness(providers(enabledProduction));
+
+    expect(response.status).toBe("ready");
+    expect(failedChecks(response)).toEqual([]);
+    expect("workerVersionId" in response).toBe(false);
+  });
+
   it("reports the thrown cause when a binding check throws", async () => {
     const exploding = {
       ...healthyBindings(),
@@ -207,6 +247,22 @@ describe("readiness wiring", () => {
     expect(response.status).toBe(503);
     expect(body.status).toBe("not_ready");
     expect(checkOf(body, "auth_gate").status).toBe("fail");
+  });
+
+  it("carries the real version_metadata binding through to the operator body only", async () => {
+    const operator = await exports.default.fetch(
+      new Request("https://example.test/api/v1/operator/readiness", {
+        headers: { authorization: `Bearer ${OPERATOR_TOKEN}` },
+      }),
+    );
+    const publicResponse = await exports.default.fetch(
+      new Request("https://example.test/api/v1/readiness", { headers: { cookie: GATE_COOKIE } }),
+    );
+
+    // Proves the wiring from the binding through createPlatformProviders, and
+    // that the split is enforced on the responses the router actually returns.
+    expect((await operator.json<ReadinessResponse>()).workerVersionId).toEqual(expect.any(String));
+    expect(await publicResponse.json<ReadinessResponse>()).not.toHaveProperty("workerVersionId");
   });
 });
 

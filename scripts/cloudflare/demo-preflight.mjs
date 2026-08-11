@@ -142,6 +142,43 @@ export function failingCheckSummary(body) {
   return ` Failing checks: ${rendered}`;
 }
 
+/**
+ * How the version id a readiness body reports relates to the version CI just
+ * deployed. The asymmetry between "stale" and "unreported" is the whole point:
+ *
+ * - `stale` is *proof* the request was answered by the version being replaced,
+ *   so that body says nothing about the release under test and outranks its
+ *   readiness verdict — retrying is the only correct move.
+ * - `unreported` proves nothing. A Worker predating the `version_metadata`
+ *   binding cannot report an id, and neither can one broken badly enough to
+ *   lose the binding. Treating it like `stale` would let a broken deploy be
+ *   waited out, so readiness still decides and only a *passing* body earns a
+ *   bounded settle.
+ */
+export function versionDisposition(expectedVersionId, observedVersionId) {
+  if (!expectedVersionId) return "unversioned";
+  if (!observedVersionId) return "unreported";
+  return observedVersionId === expectedVersionId ? "current" : "stale";
+}
+
+/** The reported version id, or `undefined` for any body that does not carry one. */
+export function reportedVersionId(body) {
+  const id = body?.workerVersionId;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function staleVersionReason(observedVersionId, expectedVersionId) {
+  return `the target is still serving Worker version ${observedVersionId}, not the just-deployed ${expectedVersionId}`;
+}
+
 function positiveInteger(value, fallback) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -174,7 +211,10 @@ async function readReadinessBody(response) {
  * that pass. Every other failure still throws.
  *
  * Retries cover only the not-deployed-yet class, so a failing readiness body is
- * reported on the first attempt and never waited out.
+ * reported on the first attempt and never waited out. `DEMO_PREFLIGHT_EXPECTED_
+ * VERSION_ID` adds exactly one more retryable case — a body that identifies
+ * itself as a *different* Worker version, which proves the gate is looking at
+ * the deployment being replaced. See `versionDisposition`.
  */
 export async function demoPreflight({
   environment = process.env,
@@ -192,10 +232,18 @@ export async function demoPreflight({
   const allowBootstrap = environment.DEMO_PREFLIGHT_ALLOW_BOOTSTRAP === "true";
   const attempts = positiveInteger(environment.DEMO_PREFLIGHT_ATTEMPTS, 1);
   const retryDelayMs = nonNegativeInteger(environment.DEMO_PREFLIGHT_RETRY_DELAY_MS, 15_000);
+  const expectedVersionId = (environment.DEMO_PREFLIGHT_EXPECTED_VERSION_ID ?? "").trim();
+  // How many extra polls a *healthy* body that reports no version id may buy.
+  // Bounded on purpose: the wait ends in a pass, so an unbounded one would be a
+  // benign wait with no verdict at the end of it.
+  const settleAttempts = nonNegativeInteger(environment.DEMO_PREFLIGHT_VERSION_SETTLE_ATTEMPTS, 2);
+  let settlesUsed = 0;
 
   const endpoint = new URL("/api/v1/operator/readiness", url);
   let unreachableReason;
+  let staleVersionId;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    staleVersionId = undefined;
     let response;
     try {
       response = await fetchImpl(endpoint, { headers: { authorization: `Bearer ${token}` } });
@@ -213,64 +261,113 @@ export async function demoPreflight({
       if (response.ok) {
         const body = await readReadinessBody(response);
         if (body !== undefined) {
-          let skippedChecks = [];
-          try {
-            ({ skippedChecks } = validateReadiness(body, { allowSchemaDrift: allowBootstrap }));
-          } catch (error) {
-            // Same rule as the non-ok branch below: pre-deploy is looking at the
-            // version being replaced, so its state must never block the deploy.
-            // A 200 can still fail validation — e.g. a writes-off deployment,
-            // which is exactly what the release turning writes on has to replace.
-            if (!allowBootstrap) throw error;
-            warn(
-              `::warning::The currently deployed Worker did not satisfy the readiness contract (${error.message}) Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
-            );
-            log("Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).");
-            return { status: "passed", replacedUnhealthy: true };
+          const observedVersionId = reportedVersionId(body);
+          const disposition = versionDisposition(expectedVersionId, observedVersionId);
+          if (disposition === "stale") {
+            // Not graded at all: this body describes the version being replaced.
+            staleVersionId = observedVersionId;
+            unreachableReason = staleVersionReason(observedVersionId, expectedVersionId);
+          } else {
+            let skippedChecks = [];
+            try {
+              // Runs before any settle, so a bad body still fails on attempt 1
+              // whether or not the target reported a version id.
+              ({ skippedChecks } = validateReadiness(body, { allowSchemaDrift: allowBootstrap }));
+            } catch (error) {
+              // Same rule as the non-ok branch below: pre-deploy is looking at the
+              // version being replaced, so its state must never block the deploy.
+              // A 200 can still fail validation — e.g. a writes-off deployment,
+              // which is exactly what the release turning writes on has to replace.
+              if (!allowBootstrap) throw error;
+              warn(
+                `::warning::The currently deployed Worker did not satisfy the readiness contract (${error.message}) Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
+              );
+              log(
+                "Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).",
+              );
+              return { status: "passed", replacedUnhealthy: true };
+            }
+            if (skippedChecks.length > 0) {
+              warn(
+                `::warning::The deployed Worker does not report ${skippedChecks.join(", ")}, so it predates this release. Everything it does report passed; the post-deploy gate requires the full set.`,
+              );
+            }
+            if (
+              disposition === "unreported" &&
+              settlesUsed < settleAttempts &&
+              attempt < attempts
+            ) {
+              // Readiness has already passed, so nothing unhealthy is being
+              // waited out here — this only gives a version that has not
+              // started identifying itself a bounded chance to do so.
+              settlesUsed += 1;
+              unreachableReason = `the target answered a fully passing readiness but reported no version id, so it cannot yet be confirmed as the just-deployed ${expectedVersionId}`;
+            } else {
+              if (disposition === "unreported") {
+                // A Worker predating the version_metadata binding cannot report
+                // an id, exactly as it cannot report a newly added check. The
+                // body it did send passed in full, which is the strongest
+                // evidence available, so the settle ends in a pass.
+                warn(
+                  `::warning::The deployed Worker reports no version id, so it could not be confirmed as ${expectedVersionId}; it predates the version_metadata binding. Its readiness passed in full, so the deployment is accepted.`,
+                );
+              }
+              log("Cloudflare demo deployment preflight passed.");
+              return {
+                status: "passed",
+                ...(disposition === "unreported" && { versionUnreported: true }),
+              };
+            }
           }
-          if (skippedChecks.length > 0) {
-            warn(
-              `::warning::The deployed Worker does not report ${skippedChecks.join(", ")}, so it predates this release. Everything it does report passed; the post-deploy gate requires the full set.`,
-            );
-          }
-          log("Cloudflare demo deployment preflight passed.");
-          return { status: "passed" };
+        } else {
+          // Reachable, but not speaking the readiness contract. At the time this
+          // was written the production hostname served a stale pre-API build that
+          // answered every /api/* path with the SPA shell, so a first CI-driven
+          // rollout would never have got past this gate. Tolerable only under
+          // DEMO_PREFLIGHT_ALLOW_BOOTSTRAP, i.e. pre-deploy; the strict
+          // post-deploy gate still rejects it.
+          unreachableReason = `the target answered HTTP ${response.status} with a non-JSON body, so this Worker's readiness endpoint is not live at the target yet`;
         }
-        // Reachable, but not speaking the readiness contract. At the time this
-        // was written the production hostname served a stale pre-API build that
-        // answered every /api/* path with the SPA shell, so a first CI-driven
-        // rollout would never have got past this gate. Tolerable only under
-        // DEMO_PREFLIGHT_ALLOW_BOOTSTRAP, i.e. pre-deploy; the strict
-        // post-deploy gate still rejects it.
-        unreachableReason = `the target answered HTTP ${response.status} with a non-JSON body, so this Worker's readiness endpoint is not live at the target yet`;
       } else {
         const body = await response.text();
-        unreachableReason = bootstrapResponseReason(response.status, body);
-        if (!unreachableReason) {
-          // A 503 readiness response carries the check list that explains it.
-          // Discarding it turned every failure into a live debugging session,
-          // so surface the failing check names and their details here.
-          const summary = failingCheckSummary(body);
-          // Tolerate only a body that is recognizably THIS Worker's readiness
-          // contract reporting itself unhealthy. A 401 or 403 carries no such
-          // body: that is a bad DEMO_PREFLIGHT_TOKEN, a configuration error
-          // which would also break the post-deploy gate, so it must still block.
-          if (allowBootstrap && summary) {
-            // Pre-deploy. This interrogates the version being REPLACED, so an
-            // unhealthy answer must not block: refusing to deploy over a broken
-            // deployment makes a production outage self-perpetuating — the
-            // remedy is exactly what cannot ship. It also says nothing about the
-            // version being shipped, which only the strict post-deploy gate can
-            // judge. Report it loudly and continue.
-            warn(
-              `::warning::The currently deployed Worker is not ready (HTTP ${response.status}).${summary} Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
+        const observedVersionId = reportedVersionId(parseJson(body));
+        if (versionDisposition(expectedVersionId, observedVersionId) === "stale") {
+          // The failure belongs to the version being replaced, not to the one
+          // under test. Only a *different* non-empty id gets here; a failing
+          // body with no id falls through to the rules below and still fails
+          // on attempt 1.
+          staleVersionId = observedVersionId;
+          unreachableReason = staleVersionReason(observedVersionId, expectedVersionId);
+        } else {
+          unreachableReason = bootstrapResponseReason(response.status, body);
+          if (!unreachableReason) {
+            // A 503 readiness response carries the check list that explains it.
+            // Discarding it turned every failure into a live debugging session,
+            // so surface the failing check names and their details here.
+            const summary = failingCheckSummary(body);
+            // Tolerate only a body that is recognizably THIS Worker's readiness
+            // contract reporting itself unhealthy. A 401 or 403 carries no such
+            // body: that is a bad DEMO_PREFLIGHT_TOKEN, a configuration error
+            // which would also break the post-deploy gate, so it must still block.
+            if (allowBootstrap && summary) {
+              // Pre-deploy. This interrogates the version being REPLACED, so an
+              // unhealthy answer must not block: refusing to deploy over a broken
+              // deployment makes a production outage self-perpetuating — the
+              // remedy is exactly what cannot ship. It also says nothing about the
+              // version being shipped, which only the strict post-deploy gate can
+              // judge. Report it loudly and continue.
+              warn(
+                `::warning::The currently deployed Worker is not ready (HTTP ${response.status}).${summary} Deploying over it anyway; the post-deploy gate decides whether the new version is healthy.`,
+              );
+              log(
+                "Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).",
+              );
+              return { status: "passed", replacedUnhealthy: true };
+            }
+            throw new Error(
+              `Production Worker readiness request failed (${response.status}).${summary}`,
             );
-            log("Cloudflare demo deployment preflight passed (replacing an unhealthy deployment).");
-            return { status: "passed", replacedUnhealthy: true };
           }
-          throw new Error(
-            `Production Worker readiness request failed (${response.status}).${summary}`,
-          );
         }
       }
     }
@@ -278,6 +375,14 @@ export async function demoPreflight({
     if (attempt < attempts) await sleep(retryDelayMs);
   }
 
+  // Deliberately ahead of the bootstrap branch: a target that keeps answering
+  // as a different version is a reachable, answering Worker, so there is nothing
+  // to tolerate. Waiting is over and the deploy did not take.
+  if (staleVersionId) {
+    throw new Error(
+      `Production Worker is still serving version ${staleVersionId} after ${attempts} attempts, not the just-deployed ${expectedVersionId}. The deploy may have been superseded by a later one.`,
+    );
+  }
   if (allowBootstrap) {
     warn(
       `::warning::Bootstrap deployment: ${unreachableReason}. The pre-deploy readiness gate is being skipped; the mandatory post-deploy gate still has to pass.`,
