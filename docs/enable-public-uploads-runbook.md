@@ -22,20 +22,22 @@ empty — zero repository variables exist yet. The `deploy-demo` job needs eleve
 in step 3) before `DEMO_DEPLOYMENT_ENABLED` — a twelfth variable — can safely go to `true` as the
 very last step. `gh secret list --repo zudolab/vector-image-detection` returns exactly four:
 `AUTH_PASSWORD`, `AUTH_PASS_COOKIE`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` (verified
-while writing this runbook). Do not recreate those four — the password wall is already live and
-the Cloudflare API token already has whatever scope it was issued with. The only secret you still
-need to create is `DEMO_PREFLIGHT_TOKEN` (step 4).
+while writing this runbook). Do not recreate those four — the password wall is already live. Do
+check `CLOUDFLARE_API_TOKEN`'s scopes against "0a. Deploy-token permissions" below rather than
+assuming whatever it was issued with is enough; that assumption has already cost one failed deploy.
+The only secret you still need to create is `DEMO_PREFLIGHT_TOKEN` (step 4).
 
-**Unverified risk:** the `deploy-demo` job now also calls the Cloudflare API directly, at the
-"Assert Vectorize index dimensions and metric" step (`scripts/cloudflare/assert-vectorize-index.mjs`),
-to confirm the Vectorize index CI is about to deploy against still matches the pinned embedding
-model. That call requires the existing `CLOUDFLARE_API_TOKEN` to carry the **"Vectorize Read"**
-account permission (see "0a. Confirm the deploy token's Vectorize permission" below). No agent
-running this runbook has Cloudflare credentials, so **this could not be verified against the actual
-token** — only documented from Cloudflare's API reference. If the token lacks that permission, the
-step fails with `HTTP 401`/`403` and an error naming the exact permission and the token variable, so
-it is a two-minute fix, but it **will** block the next production deploy until fixed. Check this
-before merging.
+**Token scope, confirmed the hard way:** the `deploy-demo` job also calls the Cloudflare API
+directly, at the "Assert Vectorize index dimensions and metric" step
+(`scripts/cloudflare/assert-vectorize-index.mjs`), to confirm the Vectorize index CI is about to
+deploy against still matches the pinned embedding model. That call needs the **"Vectorize Read"**
+account permission on `CLOUDFLARE_API_TOKEN`.
+
+The token in use when that step first shipped did **not** carry it: the deploy failed with
+`HTTP 403` before reaching `Deploy demo`, so nothing was deployed and production kept serving the
+previous version. A replacement token with the full scope list in
+"0a. Deploy-token permissions" below was issued, and the step has passed since. If you ever
+re-issue or narrow the token, that section is the checklist.
 
 ## 0. Identify or provision the account resources
 
@@ -138,28 +140,50 @@ Use environment-specific names for everything above; do not point a production r
 local/preview one, and never commit a real resource name into `wrangler.production.jsonc` itself
 — it must stay the inert template.
 
-### 0a. Confirm the deploy token's Vectorize permission
+### 0a. Deploy-token permissions
 
-The "Assert Vectorize index dimensions and metric" step in `deploy-demo`
-(`scripts/cloudflare/assert-vectorize-index.mjs`) calls
-`GET /accounts/{account_id}/vectorize/v2/indexes/{index_name}` using the existing
-`CLOUDFLARE_API_TOKEN` secret — the same token `wrangler deploy` already uses, no new secret is
-introduced. That endpoint requires the token to carry the **"Vectorize Read"** permission (an
-account-scoped custom-token permission; in the Cloudflare dashboard token editor this is the
-Account resources row: **Account → Vectorize → Read**. "Vectorize Edit" also satisfies it, but
-grant Read only — this step never writes.).
+`CLOUDFLARE_API_TOKEN` is the single token the whole `deploy-demo` job uses — `wrangler deploy` for
+both Workers, and the direct Cloudflare API call in "Assert Vectorize index dimensions and metric".
+A token's scopes are not readable from `gh` or any repo tooling, so the only way to check is the
+Cloudflare dashboard (**My Profile → API Tokens**, or **Manage Account → API Tokens** for an
+account-owned token) — or to run a deploy and read the error.
 
-**This was not verified against the actual token while writing this runbook** — no Cloudflare
-credentials were available, and a token's permission scopes are not readable via `gh` or any repo
-tooling; they can only be checked in the Cloudflare dashboard. Before merging this change, open
-**My Profile → API Tokens** (or **Manage Account → API Tokens** if it is an account-owned token) and
-find the token whose value is stored as `CLOUDFLARE_API_TOKEN`. If its permission list does not
-already include "Vectorize Read" (or "Vectorize Edit"), edit the token to add "Vectorize Read" —
-this does not require rotating the secret's value, since editing permissions on an existing token
-does not change the token string. If you skip this check, the first production deploy after this
-change merges will fail at the "Assert Vectorize index dimensions and metric" step with an
-`HTTP 401`/`403` error that names the exact permission and the token variable — nothing will have
-deployed yet, so the failure is safe, but confirming ahead of time avoids the wasted CI run.
+The list below is what this pipeline actually exercises, derived from the deploy workflow's commands
+and the bindings in `apps/demo/wrangler.production.jsonc`.
+
+**Account** — on the account owning the D1 / R2 / Queue / Vectorize resources:
+
+| Permission         | Level | Why                                                                |
+| ------------------ | ----- | ------------------------------------------------------------------ |
+| Workers Scripts    | Edit  | `wrangler deploy` for the docs and demo Workers                    |
+| D1                 | Edit  | the `DB` binding and its migrations                                |
+| Workers R2 Storage | Edit  | the private `PHOTOS` bucket binding                                |
+| Queues             | Edit  | the `PHOTO_QUEUE` producer/consumer and `PHOTO_DLQ`                |
+| Vectorize          | Read  | the metric assertion step (Edit also works; the step never writes) |
+| Workers AI         | Read  | the `AI` binding                                                   |
+| Account Settings   | Read  | wrangler resolving the account                                     |
+
+**Zone** — on the zone serving the custom domains (`takazudomodular.com`):
+
+| Permission     | Level | Why                                                      |
+| -------------- | ----- | -------------------------------------------------------- |
+| Workers Routes | Edit  | both Workers declare `routes` with `custom_domain: true` |
+| Zone           | Read  | resolving that zone for the routes                       |
+
+**User:** User Details → Read (wrangler's token verification).
+
+The dashboard's **"Edit Cloudflare Workers"** template covers most of this, but **not** Vectorize or
+Workers AI — add those two by hand.
+
+Two practical notes:
+
+- **Editing** an existing token's permissions does not change the token string, so the
+  `CLOUDFLARE_API_TOKEN` secret needs no update. **Creating a new** token does — run
+  `gh secret set CLOUDFLARE_API_TOKEN` or the deploy will keep using the old one.
+- If the token lacks a needed scope the failure is safe: the assertion step runs _before_
+  `Deploy demo`, so a `401`/`403` blocks the deploy with an error naming the exact permission while
+  production keeps serving the previous version. Re-run the job after fixing the token —
+  `gh run rerun --failed <run-id>`.
 
 ## 1. Set the seven `DEMO_*` resource-name repository variables
 
