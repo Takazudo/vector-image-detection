@@ -59,6 +59,14 @@ const child = spawn(
     "dev",
     "--config",
     "wrangler.e2e.jsonc",
+    // HTTPS, not HTTP. The demo's session cookie carries `Secure`, so any
+    // spec-compliant client refuses to send it back over plain http — the
+    // gate would appear to reject a correct login. curl only papers over this
+    // when the Cookie header is set by hand; a real cookie jar (Playwright's,
+    // or `curl -c/-b`) does not. Wrangler generates a self-signed cert here,
+    // which is why the Playwright config sets `ignoreHTTPSErrors`.
+    "--local-protocol",
+    "https",
     "--port",
     port,
     "--persist-to",
