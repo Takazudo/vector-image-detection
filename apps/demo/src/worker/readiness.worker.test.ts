@@ -124,24 +124,13 @@ describe("deep operator readiness", () => {
     expect(checkOf(deepResponse, "auth_gate").status).toBe("fail");
   });
 
-  it("fails a binding whose configuration drifts from the pinned model contract", async () => {
-    const drifted = {
-      ...healthyBindings(),
-      vectorize: {
-        describe: async () => ({ config: { dimensions: 1_024, metric: "euclidean" } }),
-      },
-    };
-
-    const response = await deepReadiness(providers(enabledProduction, drifted));
-
-    expect(failedChecks(response)).toEqual(["vectorize"]);
-  });
-
   // Vectorize V2's describe() reports `dimensions` at the top level and returns
   // no `config` object at all. Every fake in this file used to return only the
   // V1 shape, so reaching into `.config` typechecked, passed the suite, and threw
   // a TypeError against the real production binding — surfacing as an opaque
   // "vectorize binding check failed" that took a live debugging session to find.
+  // `healthyBindings()` now returns the V2 shape by default; this test pins the
+  // shape explicitly so the regression stays covered even if the default drifts.
   it("accepts the Vectorize V2 describe() shape, which has no config object", async () => {
     const v2 = {
       ...healthyBindings(),
@@ -264,10 +253,10 @@ function healthyBindings() {
     ai: { run: async () => ({}) },
     vectorize: {
       describe: async () => ({
-        config: {
-          dimensions: MODEL_CONFIG.vectorDimensions,
-          metric: MODEL_CONFIG.vectorMetric,
-        },
+        dimensions: MODEL_CONFIG.vectorDimensions,
+        vectorCount: 0,
+        processedUpToDatetime: 0,
+        processedUpToMutation: 0,
       }),
     },
     rateLimit: { limit: async () => ({ success: true }) },

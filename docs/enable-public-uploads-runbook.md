@@ -103,7 +103,10 @@ Vectorize binding 'PHOTO_VECTORS' references index '<name>' which was not found.
 ```
 
 The dry-run will not catch it — dry-run does not resolve remote resources. So confirm explicitly,
-and check the dimensions and metric in the output rather than just the name:
+and check the dimensions and metric in the output rather than just the name. This manual check is
+also the only place the metric is ever verified: the `Vectorize` binding's `describe()` (V2) does not
+report the distance metric at runtime at all, so the deployed app's readiness checks can confirm
+dimensions but never metric — this creation-time check is the floor.
 
 ```sh
 cd <repository root>
