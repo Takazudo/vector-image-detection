@@ -84,6 +84,30 @@ test("the strict readiness gate runs after the deploy and prints the rollback co
   assert.match(verifyStep, /exit 1/);
 });
 
+test("the post-deploy gate is told which version the deploy just produced", () => {
+  // Without this the gate grades whatever answers, which on a real run was the
+  // version being replaced — a red job on a healthy deploy, and a green one on
+  // a broken deploy whose predecessor was still serving.
+  const deployStep = workflow.slice(
+    stepIndex("Deploy demo"),
+    stepIndex("Verify the deployed demo"),
+  );
+  assert.match(deployStep, /id: deploy-demo\n/);
+  // `| tee` without pipefail would report a failed wrangler as success.
+  assert.match(deployStep, /shell: bash\n/);
+  assert.match(deployStep, /WRANGLER_OUTPUT_FILE_PATH:/);
+  assert.match(deployStep, /deployed-version\.mjs/);
+
+  const verifyStep = workflow.slice(
+    stepIndex("Verify the deployed demo"),
+    stepIndex("Remove staged deployment secrets"),
+  );
+  assert.match(
+    verifyStep,
+    /DEMO_PREFLIGHT_EXPECTED_VERSION_ID: \$\{\{ steps\.deploy-demo\.outputs\.version-id \}\}/,
+  );
+});
+
 test("only the pre-deploy gate tolerates a target that is not deployed yet", () => {
   const gateStep = workflow.slice(
     stepIndex("Gate production demo deployment"),

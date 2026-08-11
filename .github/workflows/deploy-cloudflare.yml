@@ -95,8 +95,10 @@ jobs:
       - name: Test production demo preflight gate
         run: >-
           node --test scripts/cloudflare/demo-preflight.node-test.mjs
+          scripts/cloudflare/assert-vectorize-index.node-test.mjs
           scripts/cloudflare/write-deploy-secrets.node-test.mjs
           scripts/cloudflare/deploy-workflow.node-test.mjs
+          scripts/cloudflare/deployed-version.node-test.mjs
           apps/demo/scripts/render-production-config.node-test.mjs
 
       # Render once. The dry-run and the deploy below both point at this exact
@@ -147,6 +149,20 @@ jobs:
           ACK_REACTIVE_PURGE_ONLY: ${{ vars.ACK_REACTIVE_PURGE_ONLY }}
         run: pnpm run cloudflare:demo-preflight
 
+      # Dimensions and metric are fixed at index creation and cannot drift on
+      # an existing index, but DEMO_VECTORIZE_INDEX_NAME is mutable repository
+      # configuration and can be re-pointed at a different, wrong-metric index
+      # — an operator action the runbook walks through. The deployed Worker has
+      # no Cloudflare API token, so this deploy-time check is the only place
+      # that can catch a repoint; see docs/enable-public-uploads-runbook.md.
+      # Hard failure on any mismatch — this check never downgrades to a warning.
+      - name: Assert Vectorize index dimensions and metric
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DEMO_VECTORIZE_INDEX_NAME: ${{ vars.DEMO_VECTORIZE_INDEX_NAME }}
+        run: node scripts/cloudflare/assert-vectorize-index.mjs
+
       # Secrets travel with the version via `wrangler deploy --secrets-file`.
       # `wrangler secret put` cannot be used: it mutates a live Worker, so it
       # fails on the first-ever deploy and otherwise leaves a window where the
@@ -161,23 +177,41 @@ jobs:
           OPERATOR_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
         run: node scripts/cloudflare/write-deploy-secrets.mjs "$RUNNER_TEMP/demo-deploy-secrets.json"
 
+      # `shell: bash` is load-bearing: it adds `-o pipefail`, without which the
+      # `| tee` below would swallow a failing wrangler exit code.
       - name: Deploy demo
+        id: deploy-demo
+        shell: bash
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: >-
-          pnpm --filter @vector-image-detection/demo exec
-          wrangler deploy --config .wrangler.production.generated.json
-          --secrets-file "$RUNNER_TEMP/demo-deploy-secrets.json"
+          # `wrangler deploy` has no --json flag; this env var makes it append an
+          # NDJSON `deploy` record carrying `version_id`, which is the only
+          # machine-readable source for the version this run shipped. The log is
+          # kept only as the `Current Version ID:` fallback.
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-deploy-output.ndjson
+        run: |
+          pnpm --filter @vector-image-detection/demo exec \
+            wrangler deploy --config .wrangler.production.generated.json \
+            --secrets-file "$RUNNER_TEMP/demo-deploy-secrets.json" \
+            | tee "$RUNNER_TEMP/wrangler-deploy.log"
+          node scripts/cloudflare/deployed-version.mjs \
+            "$WRANGLER_OUTPUT_FILE_PATH" "$RUNNER_TEMP/wrangler-deploy.log" >> "$GITHUB_OUTPUT"
 
       # Mandatory and strict: no bootstrap tolerance, so the freshly deployed
       # Worker has to answer a fully passing readiness or this job goes red.
       # The retries only cover DNS for a brand-new custom domain; a reachable
       # Worker reporting a failed check fails on the first attempt.
+      #
+      # DEMO_PREFLIGHT_EXPECTED_VERSION_ID is what stops this gate grading the
+      # version it replaced: a readiness body naming a different version is
+      # retried instead of judged. The step above fails outright if it cannot
+      # determine the id, so this can never silently degrade to a blind wait.
       - name: Verify the deployed demo
         env:
           DEMO_PREFLIGHT_URL: ${{ vars.DEMO_PREFLIGHT_URL }}
           DEMO_PREFLIGHT_TOKEN: ${{ secrets.DEMO_PREFLIGHT_TOKEN }}
+          DEMO_PREFLIGHT_EXPECTED_VERSION_ID: ${{ steps.deploy-demo.outputs.version-id }}
           DEMO_PREFLIGHT_ATTEMPTS: "6"
           DEMO_PREFLIGHT_RETRY_DELAY_MS: "15000"
           ACK_ANONYMOUS_PUBLIC_WRITES: ${{ vars.ACK_ANONYMOUS_PUBLIC_WRITES }}

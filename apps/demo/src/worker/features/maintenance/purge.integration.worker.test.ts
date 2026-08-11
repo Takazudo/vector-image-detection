@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
+import { WORKER_INTEGRATION_TIMEOUT_MS } from "../../../../test-support/worker-timeouts";
 import type { PlatformProviders } from "../../providers";
 import { listReadyPhotos } from "../photos/service";
 import { FakeEnrichmentProviders } from "../processing/providers";
@@ -124,7 +125,7 @@ describe("operator purge durability", () => {
       ).first(),
     ).toEqual({ used: 0 });
     expect(enrichment.deleted).toEqual(["photo-1:1", "photo-1:2", "photo-1:3"]);
-  });
+  }, WORKER_INTEGRATION_TIMEOUT_MS);
 });
 
 async function applyMigration(database: D1Database, source: string): Promise<void> {

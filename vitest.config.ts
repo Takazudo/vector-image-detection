@@ -14,6 +14,9 @@ export default defineConfig({
       "apps/demo/src/**/*.worker.test.ts",
       "apps/demo/src/**/*.dom.test.{ts,tsx}",
       "apps/demo/e2e/**",
+      // Playwright specs, not vitest ones. Same reason as e2e/ above: vitest
+      // would otherwise try to transform and run them as unit tests.
+      "apps/demo/e2e-worker/**",
     ],
   },
 });
