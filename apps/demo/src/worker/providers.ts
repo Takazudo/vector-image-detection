@@ -25,7 +25,7 @@ export interface PlatformProviders {
   queue: MessageQueue<PhotoQueueMessage>;
   deadLetterQueue: MessageQueue<PhotoQueueMessage>;
   ai: Ai;
-  vectorize: VectorizeIndex;
+  vectorize: Vectorize;
   rateLimit: RateLimit;
   clock: Clock;
   ids: IdGenerator;
@@ -46,7 +46,13 @@ export function createPlatformProviders(env: Env): PlatformProviders {
       metrics: () => env.PHOTO_DLQ.metrics(),
     },
     ai: env.AI,
-    vectorize: env.PHOTO_VECTORS,
+    // env.PHOTO_VECTORS is typed VectorizeIndex (V1) because wrangler@4.120.0
+    // hardcodes that type string at both of its type-generation call sites in
+    // wrangler-dist/cli.js — there is no config knob to make `wrangler types`
+    // emit V2. The real binding answers the V2 (`Vectorize`) shape, so this
+    // cast is the single place that lie is contained; everything downstream
+    // sees the honest type.
+    vectorize: env.PHOTO_VECTORS as unknown as Vectorize,
     rateLimit: env.WRITE_RATE_LIMIT,
     clock: { now: () => new Date() },
     ids: { generate: () => crypto.randomUUID() },
