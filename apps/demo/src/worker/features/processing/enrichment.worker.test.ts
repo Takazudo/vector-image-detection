@@ -26,9 +26,47 @@ describe("untrusted enrichment output", () => {
     });
   });
 
+  it("peels the Workers AI envelope the pinned Moondream binding actually returns", () => {
+    expect(
+      parseVisionOutput({
+        result: {
+          answer: '{"caption":"A cat","words":["cat","pet"]}',
+          caption: null,
+          finish_reason: "stop",
+          objects: null,
+          points: null,
+          reasoning: null,
+        },
+        usage: { prompt_tokens: 735, completion_tokens: 42, total_tokens: 777 },
+      }),
+    ).toEqual({ caption: "A cat", words: ["cat", "pet"] });
+  });
+
+  it("salvages an answer truncated by a repetition loop hitting max_tokens", () => {
+    const truncated = `{\n  "caption": "Capacitors",\n  "words": [\n    "electrolytic",\n    "electrolytic",\n    "electro`;
+    expect(parseVisionOutput({ result: { answer: truncated, finish_reason: "length" } })).toEqual({
+      caption: "Capacitors",
+      words: ["electrolytic"],
+    });
+  });
+
+  it("salvages a truncation that lands on a key with no value yet", () => {
+    const truncated = `{"caption":"A cat","words":["cat","pet"],"note`;
+    expect(parseVisionOutput({ answer: truncated })).toEqual({
+      caption: "A cat",
+      words: ["cat", "pet"],
+    });
+  });
+
   it("rejects malformed output and no usable suggested words", () => {
     expect(() => parseVisionOutput("not json")).toThrowError(ProcessingError);
     expect(() => parseVisionOutput({ caption: "caption", words: [42] })).toThrow(/no usable words/);
+  });
+
+  it("does not salvage prose that merely contains a JSON fragment", () => {
+    expect(() => parseVisionOutput({ answer: 'Here is the JSON: {"caption":"A cat"' })).toThrow(
+      /not valid JSON/,
+    );
   });
 
   it("requires exactly 768 finite embedding values", () => {
