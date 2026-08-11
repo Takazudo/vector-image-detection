@@ -1,13 +1,56 @@
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 import type { PhotoSummary } from "../../contracts/domain";
+import { MODEL_CONFIG } from "../../config";
+import type { PlatformProviders } from "../../providers";
+import { applyMigration } from "../../../../test-support/apply-migration";
 import {
   filterCanonicalSemanticCandidates,
   flattenTierPage,
   degradeRelatedTier,
   rankTierBuckets,
+  searchPhotoLibrary,
   type SearchTierBuckets,
 } from "./search";
+import migration from "../../../../migrations/0001_public_photo_library.sql?raw";
+
+describe("related tier provider call", () => {
+  it("asks Vectorize for metadata in the string form the V2 API accepts", async () => {
+    await applyMigration(env.DB, migration);
+    const options: Record<string, unknown>[] = [];
+    const response = await searchPhotoLibrary(
+      { version: "v1", query: "cat", limit: 24 },
+      fakeProviders(options),
+    );
+
+    // The binding's own types still allow `returnMetadata: false`, but the V2
+    // API answers `40026 … returnMetadata: expected value` for the boolean and
+    // the whole related tier silently degrades.
+    expect(options).toHaveLength(1);
+    expect(options[0]?.returnMetadata).toBe("none");
+    expect(typeof options[0]?.returnMetadata).not.toBe("boolean");
+    expect(response.degraded).toBe(false);
+    expect(response.degradedReason).toBeNull();
+  });
+});
+
+function fakeProviders(options: Record<string, unknown>[]): PlatformProviders {
+  return {
+    database: env.DB,
+    ai: {
+      run: async () => ({
+        data: [Array.from({ length: MODEL_CONFIG.vectorDimensions }, () => 0.125)],
+      }),
+    },
+    vectorize: {
+      query: async (_values: number[], queryOptions: Record<string, unknown>) => {
+        options.push(queryOptions);
+        return { count: 0, matches: [] };
+      },
+    },
+  } as unknown as PlatformProviders;
+}
 
 describe("deterministic tiered search", () => {
   it("keeps exact-human over exact-AI over related and deduplicates across sources", () => {

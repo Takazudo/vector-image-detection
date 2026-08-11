@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 import { WORKER_INTEGRATION_TIMEOUT_MS } from "../../../../test-support/worker-timeouts";
+import { applyMigration } from "../../../../test-support/apply-migration";
 import type { PlatformProviders } from "../../providers";
 import { listReadyPhotos } from "../photos/service";
 import { FakeEnrichmentProviders } from "../processing/providers";
@@ -128,17 +129,3 @@ describe("operator purge durability", () => {
   }, WORKER_INTEGRATION_TIMEOUT_MS);
 });
 
-async function applyMigration(database: D1Database, source: string): Promise<void> {
-  let statement = "";
-  let inTrigger = false;
-  for (const line of source.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("CREATE TRIGGER ")) inTrigger = true;
-    statement += `${line}\n`;
-    if (!trimmed.endsWith(";") || (inTrigger && trimmed !== "END;")) continue;
-    await database.exec(statement.replace(/\s+/g, " "));
-    statement = "";
-    inTrigger = false;
-  }
-  expect(statement.trim()).toBe("");
-}

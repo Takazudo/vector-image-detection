@@ -216,7 +216,11 @@ async function relatedCandidates(
   const matches = await withTimeout(
     providers.vectorize.query(values, {
       topK: SEMANTIC_CANDIDATE_LIMIT,
-      returnMetadata: false,
+      // The V2 API rejects the boolean form its own binding types still allow
+      // (`40026 … returnMetadata: expected value`), so this must stay the
+      // string enum. Only D1 decides which revision is canonical, so no match
+      // metadata is read back here.
+      returnMetadata: "none",
       returnValues: false,
     }),
     PROVIDER_TIMEOUT_MS,
