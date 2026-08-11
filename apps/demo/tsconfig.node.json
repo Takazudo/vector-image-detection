@@ -28,6 +28,7 @@
     "vitest.*.config.ts",
     "fixtures/**/*.ts",
     "tests/**/*.ts",
+    "test-support/**/*.ts",
     "e2e/**/*.ts"
   ]
 }

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { WORKER_INTEGRATION_TIMEOUT_MS } from "../../../../test-support/worker-timeouts";
 import type { PlatformProviders } from "../../providers";
 import { createPhotoQueueHandlers } from "../processing/handlers";
 import { importSeedCollection } from "./seed";
@@ -67,7 +68,7 @@ describe("credited local seed import", () => {
       replaced: 0,
       failures: [],
     });
-  }, 60_000);
+  }, WORKER_INTEGRATION_TIMEOUT_MS);
 });
 
 async function applyMigration(database: D1Database, source: string): Promise<void> {
