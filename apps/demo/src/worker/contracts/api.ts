@@ -145,6 +145,52 @@ export interface SearchResponse extends CursorPage<SearchResult> {
   degradedReason: string | null;
 }
 
+/**
+ * A photo related to `:photoId` by canonical-vector similarity. Deliberately
+ * reuses `SearchResult`'s `photo`/`reason` shape rather than redeclaring it,
+ * so hydration stays shared with `GET /search` — narrowed to the `semantic`
+ * variant of `SearchReason` because a related photo is only ever reached via
+ * vector similarity, never an exact tag/word match.
+ */
+export interface RelatedPhotoResult {
+  photo: SearchResult["photo"];
+  reason: Extract<SearchResult["reason"], { tier: "semantic" }>;
+}
+
+/**
+ * `limit` follows the same bound as `SearchRequest`/`ListPhotosRequest`:
+ * 1–`VALIDATION_LIMITS.maximumPageSize` (100), defaulting to
+ * `VALIDATION_LIMITS.defaultPageSize` (24) when omitted — enforced by the
+ * endpoint's validation schema, not by this type, matching its siblings.
+ */
+export interface RelatedPhotosRequest extends VersionedDto {
+  cursor?: string;
+  limit?: number;
+}
+
+/**
+ * The two non-success states a related-photos lookup can report, kept as
+ * distinct literals (not collapsed into one flag) per issue #70:
+ *  - "vector_pending": `:photoId` has no canonical vector yet. Normal for a
+ *    few seconds after enrichment finishes — Vectorize is eventually
+ *    consistent — so the UI should read this as "not indexed yet", not as
+ *    an error.
+ *  - "provider_unavailable": looking up `:photoId`'s already-stored canonical
+ *    vector in Vectorize failed (outage/timeout). Unlike `GET /search`, this
+ *    endpoint never runs embedding inference — it queries by an existing
+ *    vector ID — so this state can only be a Vectorize lookup failure, never
+ *    an embedding failure.
+ * An unknown, not-ready, or tombstoned `:photoId` is a 404 (`ApiErrorResponse`)
+ * and never reaches this type.
+ */
+export type RelatedPhotosDegradedReason = "vector_pending" | "provider_unavailable";
+
+export interface RelatedPhotosResponse extends CursorPage<RelatedPhotoResult> {
+  photoId: PhotoId;
+  degraded: boolean;
+  degradedReason: RelatedPhotosDegradedReason | null;
+}
+
 export interface HealthResponse {
   version: "v1";
   status: "ok";
@@ -212,6 +258,7 @@ export const API_ROUTES = {
   media: "/api/v1/photos/:photoId/media",
   aiWords: "/api/v1/photos/:photoId/ai-words",
   humanTags: "/api/v1/photos/:photoId/human-tags",
+  relatedPhotos: "/api/v1/photos/:photoId/related",
   bulkHumanTags: "/api/v1/human-tags/bulk",
   search: "/api/v1/search",
 } as const;
