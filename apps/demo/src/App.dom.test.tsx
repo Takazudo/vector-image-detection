@@ -347,6 +347,53 @@ describe("public photo library", () => {
     await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
   });
 
+  it("shares one detail fetch between the gallery card and its related panel for the same photo", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: "A cat sitting on a sunlit windowsill",
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    const relatedPhotos = vi.fn<PhotoLibraryClient["relatedPhotos"]>(async (photoId) => ({
+      version: "v1",
+      photoId,
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+      items: [],
+    }));
+    const user = userEvent.setup();
+    render(<App client={fakeClient({ getPhoto, relatedPhotos })} />);
+
+    // PhotoCard's own detail fetch (eager in jsdom, which has no
+    // IntersectionObserver) — wait for the caption it produces so the request
+    // is guaranteed to have resolved before the panel opens for the same photo.
+    await screen.findByText("A cat sitting on a sunlit windowsill");
+    expect(getPhoto).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Show photos related to photo photo-1 by AI description/i,
+      }),
+    );
+    const panel = await screen.findByRole("complementary");
+    await waitFor(() =>
+      expect(panel.textContent).toContain("A cat sitting on a sunlit windowsill"),
+    );
+
+    // The panel reused PhotoCard's cached detail request instead of issuing a
+    // second one — the WeakMap cache in fetchPhotoDetail
+    // (src/lib/photo-library-client.ts) is what turns this into a single
+    // request rather than two.
+    expect(getPhoto).toHaveBeenCalledTimes(1);
+    expect(getPhoto).toHaveBeenCalledWith("photo-1");
+  });
+
   it("cancels pending upload polling so stale responses cannot update an unmounted workspace", async () => {
     let pollingSignal: AbortSignal | undefined;
     const uploadStatus: PhotoLibraryClient["uploadStatus"] = (_operationId, signal) => {
