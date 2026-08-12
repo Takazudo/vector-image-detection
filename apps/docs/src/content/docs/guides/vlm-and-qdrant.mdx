@@ -4,6 +4,6 @@ description: オフライン SigLIP/Qdrant と任意の外部 VLM は hosted app
 sidebar_position: 3
 ---
 
-`pnpm vis` の local SigLIP、image-to-image similarity、vocabulary propagation、Qdrant backend は既存のオフライン実験用です。Worker の related search はこれを使用せず、Workers AI の英語 caption/words と human tags から作る text document を Vectorize で検索します。
+`pnpm vis` の local SigLIP、image-to-image similarity、vocabulary propagation、Qdrant backend は既存のオフライン実験用です。Worker の related search（テキスト検索の related tier、および写真ごとの Related photos パネル）はこれを使用せず、Workers AI の英語 caption/words と human tags から作る text document を Vectorize で検索します。
 
 任意の `pnpm vis tag vlm ... --confirm-upload` は別の外部 VLM API へ画像を送る機能です。hosted app の Workers AI inference と同じ data flow、保持、料金、プライバシー条件ではありません。秘密画像・個人情報・顧客資産を送る前に、その API の利用条件と明示的な承認を確認してください。
