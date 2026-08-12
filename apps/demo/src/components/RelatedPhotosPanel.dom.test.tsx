@@ -203,6 +203,51 @@ describe("related photos panel", () => {
     expect(screen.getByText(/This photo is no longer available/)).toBeTruthy();
   });
 
+  it("ends the caption placeholder when the detail request fails but neighbours load", async () => {
+    const client = panelClient(async () => page({ items: [neighbour("photo-2", "Kitten")] }));
+    client.getPhoto = async () => {
+      throw new ApiClientError("Detail unavailable", "request_failed", true, 503);
+    };
+    render(
+      <RelatedPhotosPanel
+        photo={photo("photo-1", "Cat")}
+        client={client}
+        onClose={() => undefined}
+        onOpenRelated={() => undefined}
+      />,
+    );
+
+    await waitFor(() => expect(panelState()).toBe("ready"));
+    expect(await screen.findByText(/The AI description could not be loaded/)).toBeTruthy();
+    expect(screen.queryByText(/Loading the AI description/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Show photos related to Kitten" })).toBeTruthy();
+  });
+
+  it("moves focus to the panel so the narrow-screen stacked layout does not look inert", async () => {
+    const client = panelClient(async () => page());
+    const view = render(
+      <RelatedPhotosPanel
+        photo={photo("photo-1", "Cat")}
+        client={client}
+        onClose={() => undefined}
+        onOpenRelated={() => undefined}
+      />,
+    );
+    const panel = screen.getByRole("complementary");
+    expect(document.activeElement).toBe(panel);
+
+    (document.body.querySelector("button") as HTMLButtonElement).focus();
+    view.rerender(
+      <RelatedPhotosPanel
+        photo={photo("photo-2", "Boat")}
+        client={client}
+        onClose={() => undefined}
+        onOpenRelated={() => undefined}
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("complementary"));
+  });
+
   it("discards a superseded response so photo A's neighbours never render under photo B", async () => {
     let releaseFirst!: (response: RelatedPhotosResponse) => void;
     const first = new Promise<RelatedPhotosResponse>((resolve) => {

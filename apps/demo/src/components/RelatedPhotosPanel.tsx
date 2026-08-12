@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiClientError,
   fetchPhotoDetail,
   type PhotoLibraryClient,
 } from "../lib/photo-library-client";
 import type { RelatedPhotoResult, RelatedPhotosResponse } from "../worker/contracts/api";
-import type { PhotoDetail, PhotoSummary } from "../worker/contracts/domain";
+import type { PhotoSummary } from "../worker/contracts/domain";
 import { StatusBanner } from "./StatusBanner";
 
 /**
@@ -23,6 +23,10 @@ interface RelatedListState {
 
 const loadingState: RelatedListState = { status: "loading", items: [], message: null };
 
+/** The source photo's AI caption, which explains what the neighbours matched on. */
+type CaptionState =
+  { status: "loading" } | { status: "ready"; caption: string | null } | { status: "unavailable" };
+
 export function RelatedPhotosPanel({
   photo,
   client,
@@ -35,7 +39,8 @@ export function RelatedPhotosPanel({
   onOpenRelated(photo: PhotoSummary): void;
 }) {
   const [state, setState] = useState<RelatedListState>(loadingState);
-  const [detail, setDetail] = useState<PhotoDetail | null>(null);
+  const [caption, setCaption] = useState<CaptionState>({ status: "loading" });
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,7 +48,7 @@ export function RelatedPhotosPanel({
     // discarded even when the client ignores the signal.
     let current = true;
     setState(loadingState);
-    setDetail(null);
+    setCaption({ status: "loading" });
 
     void client.relatedPhotos(photo.id, controller.signal).then(
       (response) => {
@@ -57,11 +62,13 @@ export function RelatedPhotosPanel({
 
     void fetchPhotoDetail(client, photo.id, controller.signal).then(
       (photoDetail) => {
-        if (current) setDetail(photoDetail);
+        if (current) setCaption({ status: "ready", caption: photoDetail.aiCaption });
       },
-      () => {
-        // The AI description is context, not the payload — a failure here must
-        // not hide the neighbours that did load.
+      (error: unknown) => {
+        // The AI description is context, not the payload — a failure must leave
+        // a terminal note rather than an endless placeholder, and must never
+        // hide the neighbours that did load.
+        if (current && !isAbort(error)) setCaption({ status: "unavailable" });
       },
     );
 
@@ -71,8 +78,18 @@ export function RelatedPhotosPanel({
     };
   }, [client, photo.id]);
 
+  useEffect(() => {
+    // Below the `wide` breakpoint the panel stacks after the whole gallery, so
+    // opening it without moving focus and the viewport reads as a dead click.
+    const panel = panelRef.current;
+    panel?.focus({ preventScroll: true });
+    panel?.scrollIntoView?.({ block: "nearest" });
+  }, [photo.id]);
+
   return (
     <aside
+      ref={panelRef}
+      tabIndex={-1}
       className="flex flex-col gap-md rounded-lg border border-line bg-surface p-md wide:sticky wide:top-md wide:max-h-panel-viewport wide:overflow-y-auto wide:overscroll-contain"
       aria-labelledby="related-heading"
       aria-busy={state.status === "loading"}
@@ -116,7 +133,7 @@ export function RelatedPhotosPanel({
         />
         <p className="m-0 min-w-0 text-xs text-muted">
           <span className="block font-semibold text-ink">This photo&rsquo;s AI description</span>
-          {detail === null ? "…" : (detail.aiCaption ?? "No AI description stored yet.")}
+          {captionText(caption)}
         </p>
       </div>
 
@@ -199,6 +216,12 @@ function listStateFor(response: RelatedPhotosResponse): RelatedListState {
       ? "not_indexed"
       : "provider_unavailable";
   return { status, items: response.items, message: null };
+}
+
+function captionText(caption: CaptionState): string {
+  if (caption.status === "loading") return "Loading the AI description…";
+  if (caption.status === "unavailable") return "The AI description could not be loaded.";
+  return caption.caption ?? "No AI description stored yet.";
 }
 
 function photoLabel(photo: PhotoSummary): string {
