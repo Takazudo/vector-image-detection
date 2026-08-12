@@ -9,6 +9,7 @@ export function PhotoCard({
   client,
   onSelect,
   onRemoveTag,
+  onShowRelated,
 }: {
   photo: PhotoSummary;
   selected: boolean;
@@ -16,6 +17,7 @@ export function PhotoCard({
   client: PhotoLibraryClient;
   onSelect(photoId: string): void;
   onRemoveTag(photoId: string, tag: string): void;
+  onShowRelated(photo: PhotoSummary): void;
 }) {
   const [caption, setCaption] = useState<string | null>(null);
   const articleRef = useRef<HTMLElement>(null);
@@ -96,6 +98,14 @@ export function PhotoCard({
             <p className="mt-xs mb-0 text-sm text-ink">{caption}</p>
           </div>
         )}
+        <button
+          type="button"
+          className="min-h-control justify-self-start rounded-md border border-line-strong px-sm text-sm font-semibold hover-safe:bg-sunken"
+          aria-label={`Show photos related to photo ${photo.id} by AI description`}
+          onClick={() => onShowRelated(photo)}
+        >
+          Related by AI description
+        </button>
         <div>
           <h3 className="m-0 text-sm font-semibold">AI suggested words</h3>
           <div className="mt-xs flex flex-wrap gap-xs" aria-label="AI suggested words">

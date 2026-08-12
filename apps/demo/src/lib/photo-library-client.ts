@@ -5,6 +5,7 @@ import type {
   GetPhotoResponse,
   ListPhotosResponse,
   ReadinessResponse,
+  RelatedPhotosResponse,
   SearchResponse,
   UploadStatusResponse,
 } from "../worker/contracts/api";
@@ -21,7 +22,11 @@ export interface PhotoLibraryClient {
     signal?: AbortSignal,
   ): Promise<BulkHumanTagMutationResponse>;
   search(query: string, signal?: AbortSignal): Promise<SearchResponse>;
+  relatedPhotos(photoId: string, signal?: AbortSignal): Promise<RelatedPhotosResponse>;
 }
+
+/** Matches the neighbour count the previous per-photo panel showed. */
+export const RELATED_PHOTO_LIMIT = 8;
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -85,6 +90,11 @@ export const browserPhotoLibraryClient: PhotoLibraryClient = {
     apiRequest(`/api/v1/search?version=v1&query=${encodeURIComponent(query)}&limit=100`, {
       signal,
     }),
+  relatedPhotos: (photoId, signal) =>
+    apiRequest(
+      `/api/v1/photos/${encodeURIComponent(photoId)}/related?version=v1&limit=${RELATED_PHOTO_LIMIT}`,
+      { signal },
+    ),
 };
 
 // Keyed by client instance so tests (which construct a fresh fake client per

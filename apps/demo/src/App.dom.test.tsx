@@ -118,6 +118,14 @@ function fakeClient(overrides: Partial<PhotoLibraryClient> = {}): PhotoLibraryCl
       degraded: false,
       degradedReason: null,
     }),
+    relatedPhotos: async (photoId) => ({
+      version: "v1",
+      photoId,
+      items: [],
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+    }),
   };
   return Object.assign(client, overrides);
 }
@@ -296,6 +304,47 @@ describe("public photo library", () => {
     });
     await waitFor(() => expect(screen.queryByText(/stale warning/)).toBeNull());
     expect(screen.getByLabelText("Search results for new")).toBeTruthy();
+  });
+
+  it("opens a per-photo related panel from the gallery card and closes it again", async () => {
+    const relatedPhotos = vi.fn<PhotoLibraryClient["relatedPhotos"]>(async (photoId) => ({
+      version: "v1",
+      photoId,
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+      items: [
+        {
+          photo: { ...photo("photo-7"), aiWords: [] },
+          reason: {
+            tier: "semantic",
+            score: 0.64,
+            vectorId: "photo-7:1",
+            indexedDocumentRevision: 1,
+          },
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    render(<App client={fakeClient({ relatedPhotos })} />);
+
+    expect(screen.queryByRole("complementary")).toBeNull();
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Show photos related to photo photo-1 by AI description/i,
+      }),
+    );
+    const panel = await screen.findByRole("complementary");
+    expect(within(panel).getByRole("heading", { name: "Related by AI description" })).toBeTruthy();
+    expect(relatedPhotos).toHaveBeenCalledWith("photo-1", expect.anything());
+    expect(
+      await within(panel).findByRole("button", { name: /Show photos related to favorite/i }),
+    ).toBeTruthy();
+
+    await user.click(
+      within(panel).getByRole("button", { name: /close the related photos panel/i }),
+    );
+    await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
   });
 
   it("cancels pending upload polling so stale responses cannot update an unmounted workspace", async () => {

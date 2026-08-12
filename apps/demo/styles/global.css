@@ -137,7 +137,7 @@
   grid-template-columns: 6rem minmax(0, 1fr) 2.5rem;
 }
 
-@utility grid-similar-row {
+@utility grid-related-row {
   grid-template-columns: 2.5rem minmax(0, 1fr) 2.75rem;
 }
 
