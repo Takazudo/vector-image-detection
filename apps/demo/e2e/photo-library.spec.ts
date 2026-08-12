@@ -86,6 +86,39 @@ test.beforeEach(async ({ page }) => {
     if (pathname === "/api/v1/photos/photo-1/media") {
       return route.fulfill({ status: 200, contentType: "image/png", body: pixel });
     }
+    // PhotoCard fetches this eagerly on mount (#73's AI caption) and
+    // RelatedPhotosPanel fetches it too (#72), sharing one request via
+    // fetchPhotoDetail's cache — without a handler here every card render
+    // hits the catch-all 500 below and fails every test's console-error guard.
+    const detailMatch = request.method() === "GET" && pathname.match(/^\/api\/v1\/photos\/([^/]+)$/);
+    if (detailMatch) {
+      const photoId = detailMatch[1]!;
+      return json({
+        version: "v1",
+        photo: {
+          ...photo,
+          id: photoId,
+          humanTags: photoId === "photo-1" ? humanTags : [],
+          byteSize: 10,
+          sha256: "x",
+          aiCaption: "A tabby cat on a windowsill",
+          canonicalIndexedRevision: 1,
+          reindexRequiredRevision: null,
+        },
+      });
+    }
+    const relatedMatch =
+      request.method() === "GET" && pathname.match(/^\/api\/v1\/photos\/([^/]+)\/related$/);
+    if (relatedMatch) {
+      return json({
+        version: "v1",
+        photoId: relatedMatch[1]!,
+        items: [],
+        nextCursor: null,
+        degraded: false,
+        degradedReason: null,
+      });
+    }
     if (pathname === "/api/v1/photos" && request.method() === "POST") {
       return json(
         {
