@@ -459,6 +459,7 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
             degradedReason={degradedReason}
             selected={selected}
             writesEnabled={writesEnabled}
+            client={client}
             onSelect={toggleSelection}
             onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
           />
@@ -499,6 +500,7 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
                 photos={visiblePhotos}
                 selected={selected}
                 writesEnabled={writesEnabled}
+                client={client}
                 onSelect={toggleSelection}
                 onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
               />
@@ -533,12 +535,14 @@ function PhotoGrid({
   photos,
   selected,
   writesEnabled,
+  client,
   onSelect,
   onRemoveTag,
 }: {
   photos: PhotoSummary[];
   selected: Set<string>;
   writesEnabled: boolean;
+  client: PhotoLibraryClient;
   onSelect(id: string): void;
   onRemoveTag(id: string, tag: string): void;
 }) {
@@ -553,6 +557,7 @@ function PhotoGrid({
           photo={photo}
           selected={selected.has(photo.id)}
           disabled={!writesEnabled}
+          client={client}
           onSelect={onSelect}
           onRemoveTag={onRemoveTag}
         />
@@ -628,6 +633,7 @@ function SearchResults({
   degradedReason,
   selected,
   writesEnabled,
+  client,
   onSelect,
   onRemoveTag,
 }: {
@@ -636,6 +642,7 @@ function SearchResults({
   degradedReason: string | null;
   selected: Set<string>;
   writesEnabled: boolean;
+  client: PhotoLibraryClient;
   onSelect(id: string): void;
   onRemoveTag(id: string, tag: string): void;
 }) {
@@ -671,6 +678,7 @@ function SearchResults({
                   photos={tierResults.map((result) => result.photo)}
                   selected={selected}
                   writesEnabled={writesEnabled}
+                  client={client}
                   onSelect={onSelect}
                   onRemoveTag={onRemoveTag}
                 />

@@ -8,6 +8,7 @@ import type {
   SearchResponse,
   UploadStatusResponse,
 } from "../worker/contracts/api";
+import type { PhotoDetail, PhotoId } from "../worker/contracts/domain";
 
 export interface PhotoLibraryClient {
   readiness(signal?: AbortSignal): Promise<ReadinessResponse>;
@@ -85,3 +86,36 @@ export const browserPhotoLibraryClient: PhotoLibraryClient = {
       signal,
     }),
 };
+
+// Keyed by client instance so tests (which construct a fresh fake client per
+// render) never see another test's cached detail, while the app's single
+// shared browserPhotoLibraryClient keeps one cache for the session.
+const photoDetailRequestsByClient = new WeakMap<PhotoLibraryClient, Map<PhotoId, Promise<PhotoDetail>>>();
+
+/**
+ * Fetches a photo's detail record — the only place fields like `aiCaption`
+ * are available, since `GET /api/v1/photos` only returns list summaries.
+ * Concurrent callers for the same photo/client share one in-flight request,
+ * and a successful result is cached for the client's lifetime, so rendering
+ * both the gallery caption and a related-photos panel for the same photo
+ * costs one request, not two. Failed lookups are not cached, so callers may
+ * retry.
+ *
+ * No AbortSignal parameter on purpose: the request is shared across callers,
+ * so any one consumer aborting it would break every other in-flight reader.
+ * Callers that need to ignore a stale response after unmounting should track
+ * that themselves (e.g. an `active` flag set in a `useEffect` cleanup).
+ */
+export function fetchPhotoDetail(client: PhotoLibraryClient, photoId: PhotoId): Promise<PhotoDetail> {
+  let requests = photoDetailRequestsByClient.get(client);
+  if (!requests) {
+    requests = new Map();
+    photoDetailRequestsByClient.set(client, requests);
+  }
+  const cached = requests.get(photoId);
+  if (cached) return cached;
+  const request = client.getPhoto(photoId).then((response) => response.photo);
+  request.catch(() => requests.delete(photoId));
+  requests.set(photoId, request);
+  return request;
+}
