@@ -5,9 +5,11 @@ import type {
   GetPhotoResponse,
   ListPhotosResponse,
   ReadinessResponse,
+  RelatedPhotosResponse,
   SearchResponse,
   UploadStatusResponse,
 } from "../worker/contracts/api";
+import type { PhotoDetail } from "../worker/contracts/domain";
 
 export interface PhotoLibraryClient {
   readiness(signal?: AbortSignal): Promise<ReadinessResponse>;
@@ -20,7 +22,26 @@ export interface PhotoLibraryClient {
     signal?: AbortSignal,
   ): Promise<BulkHumanTagMutationResponse>;
   search(query: string, signal?: AbortSignal): Promise<SearchResponse>;
+  relatedPhotos(photoId: string, signal?: AbortSignal): Promise<RelatedPhotosResponse>;
 }
+
+/**
+ * The single entry point every UI surface uses to read one photo's detail
+ * document. Deliberately not inlined into a component: the related-photos
+ * panel and the gallery caption row read the same photo, and keeping one
+ * named function makes a duplicate fetch obvious rather than invisible.
+ */
+export async function fetchPhotoDetail(
+  client: PhotoLibraryClient,
+  photoId: string,
+  signal?: AbortSignal,
+): Promise<PhotoDetail> {
+  const response = await client.getPhoto(photoId, signal);
+  return response.photo;
+}
+
+/** Matches the neighbour count the previous per-photo panel showed. */
+export const RELATED_PHOTO_LIMIT = 8;
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -84,4 +105,9 @@ export const browserPhotoLibraryClient: PhotoLibraryClient = {
     apiRequest(`/api/v1/search?version=v1&query=${encodeURIComponent(query)}&limit=100`, {
       signal,
     }),
+  relatedPhotos: (photoId, signal) =>
+    apiRequest(
+      `/api/v1/photos/${encodeURIComponent(photoId)}/related?version=v1&limit=${RELATED_PHOTO_LIMIT}`,
+      { signal },
+    ),
 };
