@@ -19,19 +19,65 @@ Site 全体は password wall の背後にあり、それ自体が public writes 
 7. **write をまだ off のまま deploy する。** production template は `PUBLIC_WRITES_ENABLED: "false"` です。read-only gallery/search と operator readiness を確認します。docs job はこの demo gate とは独立して deploy できます。
 8. **3 つの risk acknowledgement を人が承認する。** 次の完全一致 values を secure CI variables に入れます。匿名 public writes、元画像 metadata の残留、reactive purge only moderation を理解していることが条件です。
 
-```sh
-ACK_ANONYMOUS_PUBLIC_WRITES=I_ACKNOWLEDGE_ANONYMOUS_PUBLIC_WRITES
-ACK_RETAINED_IMAGE_METADATA=I_ACKNOWLEDGE_RETAINED_IMAGE_METADATA
-ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
-```
+   ```sh
+   ACK_ANONYMOUS_PUBLIC_WRITES=I_ACKNOWLEDGE_ANONYMOUS_PUBLIC_WRITES
+   ACK_RETAINED_IMAGE_METADATA=I_ACKNOWLEDGE_RETAINED_IMAGE_METADATA
+   ACK_REACTIVE_PURGE_ONLY=I_ACKNOWLEDGE_REACTIVE_PURGE_ONLY_MODERATION
+   ```
 
 9. **認証済み preflight を pass させる。** provisioning 中は repository variable `DEMO_DEPLOYMENT_ENABLED` を unset のままにし、demo deploy job を安全に skip させます。resource、read-only Worker、secret、acknowledgement がすべて用意できた最後の段階でだけ `DEMO_DEPLOYMENT_ENABLED=true` を設定します。`DEMO_PREFLIGHT_URL` と secret `DEMO_PREFLIGHT_TOKEN` を用意し、`pnpm run cloudflare:demo-preflight` を実行します。`/api/v1/operator/readiness` がすべての required check を `pass`、production、public writes enabled、正しいモデル/Vectorize invariant と返さない限り CI の demo deploy は停止します。
-
    deploy 用 secret も同時に用意します。`AUTH_PASSWORD`、`AUTH_PASS_COOKIE`、`DEMO_PREFLIGHT_TOKEN`（deploy 後の `OPERATOR_PREFLIGHT_TOKEN`）の 3 つを repository secret に入れます。gate secret 2 つは prefix を付けません。すでにその名前で repository secret に存在し、local の `.env` でも同じ key を使うためです。CI は `wrangler deploy --secrets-file` で version と一緒に upload するので、dashboard での手動設定は不要です。gate secret が欠けた production Worker は serve を拒否します。
-
    deploy 前の gate は「この Worker の readiness endpoint がまだそこに無い」状態を許容します。name が解決しない、connection が拒否される、Cloudflare の 1000 番台 edge error が返る場合に加えて、readiness JSON として parse できない body を返す `200`（旧 build や SPA shell が応答している状態）も同じ扱いで `::warning::` にして先へ進み、deploy がその Worker を置き換えます。境界は parse できるかどうかです。parse できる body はこの Worker が応答した証拠なので、check が fail していれば従来どおり job を止めます。`401` や `404` などの応答も止めます。初回 deploy だけは verification より先に traffic が切り替わりますが、password wall が公開を防ぎ、`DEMO_DEPLOYMENT_ENABLED` が人による opt-in として残り、deploy 後の strict gate が必ず走って失敗時に rollback command を出力します。
-
 10. **public writes を有効化する。** preflight と acknowledgement 後にのみ generated production config が true を設定し deploy します。deploy 後は一つの upload、処理状態、media authorization、human tag exact search、AI-word exact search、related degradation を運用者が記録して確認します。この live smoke test は provisioning 前には「完了」と宣言しません。
+
+### Related photos の実 index smoke check（手動、再現可能）
+
+credential-free CI の Worker e2e leg は AI/Vectorize binding を持たないため（`wrangler.e2e.jsonc`）、`GET /api/v1/photos/:photoId/related` が実際の neighbours を返すかどうかは自動テストで確認できません。デプロイ済みの production/preview に対して、以下を運用者が手動で実行します。
+
+```sh
+# 1. password wall を通過して session cookie を保存
+#    AUTH_PASSWORD は運用者が保持する production secret
+curl -sS -c cookies.txt -d "password=$AUTH_PASSWORD" \
+  "https://<deployed-host>/__auth" -o /dev/null -w '%{http_code}\n'
+# → 302 を確認
+
+# 2. state=ready な既存写真の photoId を選ぶ（gallery か GET /api/v1/photos から）
+PHOTO_ID="<既存の ready photo の id>"
+
+# 3. related endpoint を叩く
+curl -sS -b cookies.txt \
+  "https://<deployed-host>/api/v1/photos/$PHOTO_ID/related?version=v1&limit=8" | jq .
+```
+
+期待される shape（`RelatedPhotosResponse`、`apps/demo/src/worker/contracts/api.ts`）:
+
+```json
+{
+  "version": "v1",
+  "photoId": "<PHOTO_ID>",
+  "items": [
+    {
+      "photo": { "id": "...", "state": "ready", "...": "..." },
+      "reason": {
+        "tier": "semantic",
+        "score": 0.83,
+        "vectorId": "<neighbourPhotoId>:<revision>",
+        "indexedDocumentRevision": 1
+      }
+    }
+  ],
+  "nextCursor": null,
+  "degraded": false,
+  "degradedReason": null
+}
+```
+
+判定基準:
+
+- `degraded: false` かつ `items` が非空 — index は生きており、実 neighbours を返している。これが合格ライン。
+- `degraded: true, degradedReason: "vector_pending"` — その写真の canonical vector がまだ Vectorize に反映されていない一時的な状態（eventually consistent）。数秒待って再試行する。
+- `degraded: true, degradedReason: "provider_unavailable"` — Vectorize 参照そのものが失敗した障害状態。恒久的に続くなら Vectorize index の health/binding を調査する。
+- `items: []` かつ `degraded: false` — index は生きているが、この写真の AI description に近い他の写真が存在しない、正当な「該当なし」。
 
 Cloudflare CLI は認証済み account を操作します。`wrangler r2 bucket create <name>`、`wrangler queues create <name>`、`wrangler vectorize create <name> --dimensions=768 --metric=cosine` の対象名は各環境専用にし、production と local/preview を混ぜません。Queue/DLQ の consumer 構成は Wrangler config でも確認します。
 
