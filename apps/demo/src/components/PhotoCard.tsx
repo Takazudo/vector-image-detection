@@ -1,20 +1,72 @@
+import { useEffect, useRef, useState } from "react";
+import { fetchPhotoDetail, type PhotoLibraryClient } from "../lib/photo-library-client";
 import type { PhotoSummary } from "../worker/contracts/domain";
 
 export function PhotoCard({
   photo,
   selected,
   disabled,
+  client,
   onSelect,
   onRemoveTag,
 }: {
   photo: PhotoSummary;
   selected: boolean;
   disabled: boolean;
+  client: PhotoLibraryClient;
   onSelect(photoId: string): void;
   onRemoveTag(photoId: string, tag: string): void;
 }) {
+  const [caption, setCaption] = useState<string | null>(null);
+  const articleRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    setCaption(null);
+
+    const loadCaption = () => {
+      fetchPhotoDetail(client, photo.id)
+        .then((detail) => {
+          if (active) setCaption(detail.aiCaption);
+        })
+        .catch(() => {
+          // Caption is an enhancement, not core gallery functionality — a
+          // failed detail fetch just leaves the card without one.
+        });
+    };
+
+    // A gallery page can render up to 100 cards at once; fetching every
+    // card's detail on mount would turn one page load into 100 detail
+    // requests. Defer off-screen cards until they approach the viewport.
+    // jsdom (used by the dom test suite) has no IntersectionObserver, so
+    // tests fall back to the eager path below.
+    if (typeof IntersectionObserver === "undefined" || !articleRef.current) {
+      loadCaption();
+      return () => {
+        active = false;
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          loadCaption();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(articleRef.current);
+
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [client, photo.id]);
+
   return (
     <article
+      ref={articleRef}
       className={`min-w-0 overflow-hidden rounded-lg border bg-surface ${selected ? "border-accent shadow-selected" : "border-line"}`}
     >
       <div className="relative aspect-[4/3] bg-sunken">
@@ -38,6 +90,12 @@ export function PhotoCard({
         </label>
       </div>
       <div className="grid gap-md p-md">
+        {caption && (
+          <div>
+            <h3 className="m-0 text-sm font-semibold">AI description</h3>
+            <p className="mt-xs mb-0 text-sm text-ink">{caption}</p>
+          </div>
+        )}
         <div>
           <h3 className="m-0 text-sm font-semibold">AI suggested words</h3>
           <div className="mt-xs flex flex-wrap gap-xs" aria-label="AI suggested words">

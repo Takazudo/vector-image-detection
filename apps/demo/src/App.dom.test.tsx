@@ -315,6 +315,43 @@ describe("public photo library", () => {
     expect(pollingSignal?.aborted).toBe(true);
   });
 
+  it("renders the AI-generated caption once the photo's detail loads", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: "A cat sitting on a sunlit windowsill",
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    render(<App client={fakeClient({ getPhoto })} />);
+    expect(await screen.findByText("A cat sitting on a sunlit windowsill")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "AI description" })).toBeTruthy();
+    expect(getPhoto).toHaveBeenCalledWith("photo-1");
+  });
+
+  it("renders no caption block, placeholder, or heading for a photo without an AI caption", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: null,
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    render(<App client={fakeClient({ getPhoto })} />);
+    await screen.findByRole("img", { name: /uploaded library photo/i });
+    await waitFor(() => expect(getPhoto).toHaveBeenCalledWith("photo-1"));
+    expect(screen.queryByRole("heading", { name: "AI description" })).toBeNull();
+    expect(screen.queryByText(/A cat sitting/)).toBeNull();
+  });
+
   it("exposes deterministic responsive intent in markup", async () => {
     render(<App client={fakeClient()} />);
     const image = await screen.findByRole("img", { name: /uploaded library photo/i });
