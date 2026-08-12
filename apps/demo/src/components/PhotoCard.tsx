@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchPhotoDetail, type PhotoLibraryClient } from "../lib/photo-library-client";
 import type { PhotoSummary } from "../worker/contracts/domain";
 
@@ -18,25 +18,55 @@ export function PhotoCard({
   onRemoveTag(photoId: string, tag: string): void;
 }) {
   const [caption, setCaption] = useState<string | null>(null);
+  const articleRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
     setCaption(null);
-    fetchPhotoDetail(client, photo.id)
-      .then((detail) => {
-        if (active) setCaption(detail.aiCaption);
-      })
-      .catch(() => {
-        // Caption is an enhancement, not core gallery functionality — a
-        // failed detail fetch just leaves the card without one.
-      });
+
+    const loadCaption = () => {
+      fetchPhotoDetail(client, photo.id)
+        .then((detail) => {
+          if (active) setCaption(detail.aiCaption);
+        })
+        .catch(() => {
+          // Caption is an enhancement, not core gallery functionality — a
+          // failed detail fetch just leaves the card without one.
+        });
+    };
+
+    // A gallery page can render up to 100 cards at once; fetching every
+    // card's detail on mount would turn one page load into 100 detail
+    // requests. Defer off-screen cards until they approach the viewport.
+    // jsdom (used by the dom test suite) has no IntersectionObserver, so
+    // tests fall back to the eager path below.
+    if (typeof IntersectionObserver === "undefined" || !articleRef.current) {
+      loadCaption();
+      return () => {
+        active = false;
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          loadCaption();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(articleRef.current);
+
     return () => {
       active = false;
+      observer.disconnect();
     };
   }, [client, photo.id]);
 
   return (
     <article
+      ref={articleRef}
       className={`min-w-0 overflow-hidden rounded-lg border bg-surface ${selected ? "border-accent shadow-selected" : "border-line"}`}
     >
       <div className="relative aspect-[4/3] bg-sunken">
