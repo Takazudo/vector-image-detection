@@ -45,6 +45,21 @@ export function RelatedPhotosPanel({
   const [state, setState] = useState<RelatedListState>(loadingState);
   const [caption, setCaption] = useState<CaptionState>({ status: "loading" });
   const panelRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  // Declared before the focus effect below so it captures the opener while it
+  // is still the active element. Closing the panel only unmounts the focused
+  // node, which drops focus to <body>; in the stacked layout the panel sits
+  // after the entire gallery, so that strands a keyboard user at the gallery
+  // bottom, far from the card they opened. Focus without `preventScroll` also
+  // brings the originating card back into view.
+  useEffect(() => {
+    openerRef.current = document.activeElement as HTMLElement | null;
+    return () => {
+      const opener = openerRef.current;
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();

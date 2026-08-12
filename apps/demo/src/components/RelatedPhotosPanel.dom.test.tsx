@@ -290,6 +290,32 @@ describe("related photos panel", () => {
     expect(relatedPhotos).toHaveBeenCalledTimes(2);
   });
 
+  it("hands focus back to whatever opened it when it closes", async () => {
+    const client = panelClient(async () => page({ items: [neighbour("photo-2", "Kitten")] }));
+    // Stands in for the gallery card's "Related by AI description" trigger. In
+    // the stacked layout the panel renders after the whole gallery, so letting
+    // focus fall to <body> on close strands the user at the gallery bottom.
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    const view = render(
+      <RelatedPhotosPanel
+        photo={photo("photo-1", "Cat")}
+        client={client}
+        onClose={() => undefined}
+        onOpenRelated={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(panelState()).toBe("ready"));
+    expect(document.activeElement).not.toBe(opener);
+
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it("never implies the system compares images to each other", async () => {
     const client = panelClient(async () => page({ items: [neighbour("photo-2", "Kitten")] }));
     render(
