@@ -35,9 +35,16 @@ Site 全体は password wall の背後にあり、それ自体が public writes 
 credential-free CI の Worker e2e leg は AI/Vectorize binding を持たないため（`wrangler.e2e.jsonc`）、`GET /api/v1/photos/:photoId/related` が実際の neighbours を返すかどうかは自動テストで確認できません。デプロイ済みの production/preview に対して、以下を運用者が手動で実行します。
 
 ```sh
+# 0. cookie jar は checkout の外、mode 600 の使い捨てにする
+#    ("vid_demo_pass" は 1 年有効な bypass credential — repo に残してはいけない)
+COOKIE_JAR=$(mktemp)
+chmod 600 "$COOKIE_JAR"
+trap 'rm -f "$COOKIE_JAR"' EXIT
+
 # 1. password wall を通過して session cookie を保存
 #    AUTH_PASSWORD は運用者が保持する production secret
-curl -sS -c cookies.txt -d "password=$AUTH_PASSWORD" \
+#    --data-urlencode: password に + や & などの reserved 文字があっても壊れない
+curl -sS -c "$COOKIE_JAR" --data-urlencode "password=$AUTH_PASSWORD" \
   "https://<deployed-host>/__auth" -o /dev/null -w '%{http_code}\n'
 # → 302 を確認
 
@@ -45,7 +52,7 @@ curl -sS -c cookies.txt -d "password=$AUTH_PASSWORD" \
 PHOTO_ID="<既存の ready photo の id>"
 
 # 3. related endpoint を叩く
-curl -sS -b cookies.txt \
+curl -sS -b "$COOKIE_JAR" \
   "https://<deployed-host>/api/v1/photos/$PHOTO_ID/related?version=v1&limit=8" | jq .
 ```
 
