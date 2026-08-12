@@ -157,6 +157,12 @@ export interface RelatedPhotoResult {
   reason: Extract<SearchResult["reason"], { tier: "semantic" }>;
 }
 
+/**
+ * `limit` follows the same bound as `SearchRequest`/`ListPhotosRequest`:
+ * 1–`VALIDATION_LIMITS.maximumPageSize` (100), defaulting to
+ * `VALIDATION_LIMITS.defaultPageSize` (24) when omitted — enforced by the
+ * endpoint's validation schema, not by this type, matching its siblings.
+ */
 export interface RelatedPhotosRequest extends VersionedDto {
   cursor?: string;
   limit?: number;
@@ -169,9 +175,11 @@ export interface RelatedPhotosRequest extends VersionedDto {
  *    few seconds after enrichment finishes — Vectorize is eventually
  *    consistent — so the UI should read this as "not indexed yet", not as
  *    an error.
- *  - "provider_unavailable": the vector query itself failed (embedding or
- *    Vectorize outage/timeout), mirroring how `GET /search` reports a failed
- *    related-tier lookup via `degradedReason`.
+ *  - "provider_unavailable": looking up `:photoId`'s already-stored canonical
+ *    vector in Vectorize failed (outage/timeout). Unlike `GET /search`, this
+ *    endpoint never runs embedding inference — it queries by an existing
+ *    vector ID — so this state can only be a Vectorize lookup failure, never
+ *    an embedding failure.
  * An unknown, not-ready, or tombstoned `:photoId` is a 404 (`ApiErrorResponse`)
  * and never reaches this type.
  */
