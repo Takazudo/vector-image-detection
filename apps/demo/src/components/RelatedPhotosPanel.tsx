@@ -100,20 +100,31 @@ export function RelatedPhotosPanel({
     };
   }, [client, photo.id]);
 
+  // Focus only on open / photo change — not when the list settles below, which
+  // would steal focus back from anywhere the user moved it while waiting.
   useEffect(() => {
-    // Below the `wide` breakpoint the panel stacks after the whole gallery, so
-    // opening it without moving focus and the viewport reads as a dead click.
-    const panel = panelRef.current;
-    panel?.focus({ preventScroll: true });
+    panelRef.current?.focus({ preventScroll: true });
+  }, [photo.id]);
+
+  // Below the `wide` breakpoint the panel stacks after the whole gallery, so
+  // opening it without moving the viewport reads as a dead click.
+  const listSettled = state.status !== "loading";
+  useEffect(() => {
     // Only scroll in the stacked layout — at `wide` and up the panel is a
     // sticky aside already beside the gallery, so scrolling to it just yanks
     // the page. `block: "start"` rather than `"nearest"`: nearest is the
     // *minimum* scroll, and the minimum leaves the panel under the sticky
     // BulkTagBar, which is exactly the dead-click this effect exists to avoid.
-    if (!window.matchMedia?.(`(min-width: ${WIDE_BREAKPOINT})`).matches) {
-      panel?.scrollIntoView?.({ block: "start" });
-    }
-  }, [photo.id]);
+    if (window.matchMedia?.(`(min-width: ${WIDE_BREAKPOINT})`).matches) return;
+    // Re-run once the list settles. The mount-time scroll happens while the
+    // panel is still a one-line "Finding photos…" box, so the document is
+    // shorter than it will be and the browser clamps the scroll to the
+    // then-current maximum. The list then arrives, the document grows, and the
+    // clamped position is never revisited — leaving most of the list below the
+    // fold. The panel is always the last flow content, so this clamp would
+    // otherwise happen on essentially every open.
+    panelRef.current?.scrollIntoView?.({ block: "start" });
+  }, [photo.id, listSettled]);
 
   return (
     <aside
