@@ -118,6 +118,14 @@ function fakeClient(overrides: Partial<PhotoLibraryClient> = {}): PhotoLibraryCl
       degraded: false,
       degradedReason: null,
     }),
+    relatedPhotos: async (photoId) => ({
+      version: "v1",
+      photoId,
+      items: [],
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+    }),
   };
   return Object.assign(client, overrides);
 }
@@ -298,6 +306,94 @@ describe("public photo library", () => {
     expect(screen.getByLabelText("Search results for new")).toBeTruthy();
   });
 
+  it("opens a per-photo related panel from the gallery card and closes it again", async () => {
+    const relatedPhotos = vi.fn<PhotoLibraryClient["relatedPhotos"]>(async (photoId) => ({
+      version: "v1",
+      photoId,
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+      items: [
+        {
+          photo: { ...photo("photo-7"), aiWords: [] },
+          reason: {
+            tier: "semantic",
+            score: 0.64,
+            vectorId: "photo-7:1",
+            indexedDocumentRevision: 1,
+          },
+        },
+      ],
+    }));
+    const user = userEvent.setup();
+    render(<App client={fakeClient({ relatedPhotos })} />);
+
+    expect(screen.queryByRole("complementary")).toBeNull();
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Show photos related to photo photo-1 by AI description/i,
+      }),
+    );
+    const panel = await screen.findByRole("complementary");
+    expect(within(panel).getByRole("heading", { name: "Related by AI description" })).toBeTruthy();
+    expect(relatedPhotos).toHaveBeenCalledWith("photo-1", expect.anything());
+    expect(
+      await within(panel).findByRole("button", { name: /Show photos related to favorite/i }),
+    ).toBeTruthy();
+
+    await user.click(
+      within(panel).getByRole("button", { name: /close the related photos panel/i }),
+    );
+    await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
+  });
+
+  it("shares one detail fetch between the gallery card and its related panel for the same photo", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: "A cat sitting on a sunlit windowsill",
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    const relatedPhotos = vi.fn<PhotoLibraryClient["relatedPhotos"]>(async (photoId) => ({
+      version: "v1",
+      photoId,
+      nextCursor: null,
+      degraded: false,
+      degradedReason: null,
+      items: [],
+    }));
+    const user = userEvent.setup();
+    render(<App client={fakeClient({ getPhoto, relatedPhotos })} />);
+
+    // PhotoCard's own detail fetch (eager in jsdom, which has no
+    // IntersectionObserver) — wait for the caption it produces so the request
+    // is guaranteed to have resolved before the panel opens for the same photo.
+    await screen.findByText("A cat sitting on a sunlit windowsill");
+    expect(getPhoto).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Show photos related to photo photo-1 by AI description/i,
+      }),
+    );
+    const panel = await screen.findByRole("complementary");
+    await waitFor(() =>
+      expect(panel.textContent).toContain("A cat sitting on a sunlit windowsill"),
+    );
+
+    // The panel reused PhotoCard's cached detail request instead of issuing a
+    // second one — the WeakMap cache in fetchPhotoDetail
+    // (src/lib/photo-library-client.ts) is what turns this into a single
+    // request rather than two.
+    expect(getPhoto).toHaveBeenCalledTimes(1);
+    expect(getPhoto).toHaveBeenCalledWith("photo-1");
+  });
+
   it("cancels pending upload polling so stale responses cannot update an unmounted workspace", async () => {
     let pollingSignal: AbortSignal | undefined;
     const uploadStatus: PhotoLibraryClient["uploadStatus"] = (_operationId, signal) => {
@@ -313,6 +409,43 @@ describe("public photo library", () => {
     await waitFor(() => expect(pollingSignal).toBeDefined());
     view.unmount();
     expect(pollingSignal?.aborted).toBe(true);
+  });
+
+  it("renders the AI-generated caption once the photo's detail loads", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: "A cat sitting on a sunlit windowsill",
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    render(<App client={fakeClient({ getPhoto })} />);
+    expect(await screen.findByText("A cat sitting on a sunlit windowsill")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "AI description" })).toBeTruthy();
+    expect(getPhoto).toHaveBeenCalledWith("photo-1");
+  });
+
+  it("renders no caption block, placeholder, or heading for a photo without an AI caption", async () => {
+    const getPhoto = vi.fn(async (photoId: string) => ({
+      version: "v1" as const,
+      photo: {
+        ...photo(photoId),
+        byteSize: 10,
+        sha256: "x",
+        aiCaption: null,
+        canonicalIndexedRevision: 1,
+        reindexRequiredRevision: null,
+      },
+    }));
+    render(<App client={fakeClient({ getPhoto })} />);
+    await screen.findByRole("img", { name: /uploaded library photo/i });
+    await waitFor(() => expect(getPhoto).toHaveBeenCalledWith("photo-1"));
+    expect(screen.queryByRole("heading", { name: "AI description" })).toBeNull();
+    expect(screen.queryByText(/A cat sitting/)).toBeNull();
   });
 
   it("exposes deterministic responsive intent in markup", async () => {

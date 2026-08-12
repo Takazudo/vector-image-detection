@@ -51,6 +51,11 @@
   --spacing-thumb: 3.5rem;
   --spacing-thumb-lg: 4rem;
   --spacing-panel: 21rem;
+  /* Vertical footprint the sticky BulkTagBar claims at the bottom of the
+     viewport, including its `bottom-sm` offset. Deliberately generous: the
+     bar's tag form wraps to a second row on narrow viewports, so this is
+     sized for the wrapped case rather than the measured desktop height. */
+  --spacing-bulk-bar: 14rem;
 
   --font-sans: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
@@ -137,12 +142,17 @@
   grid-template-columns: 6rem minmax(0, 1fr) 2.5rem;
 }
 
-@utility grid-similar-row {
+@utility grid-related-row {
   grid-template-columns: 2.5rem minmax(0, 1fr) 2.75rem;
 }
 
 @utility max-h-panel-viewport {
-  max-height: calc(100vh - var(--spacing-xl));
+  /* Reserves the sticky top offset *and* the BulkTagBar, which is `sticky
+     bottom-sm` and therefore overlaps anything sized to the full viewport.
+     Without the bar's share a full page of related results scrolls its last
+     rows behind the bar, where they can't be read until the whole page is
+     scrolled to the bottom and the panel unsticks. */
+  max-height: calc(100vh - var(--spacing-xl) - var(--spacing-bulk-bar));
 }
 
 @utility popover-panel {

@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import { PhotoCard } from "./components/PhotoCard";
+import { RelatedPhotosPanel } from "./components/RelatedPhotosPanel";
 import { StatusBanner } from "./components/StatusBanner";
 import {
   ApiClientError,
@@ -65,6 +66,7 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchBusy, setSearchBusy] = useState(false);
   const [degradedReason, setDegradedReason] = useState<string | null>(null);
+  const [relatedPhoto, setRelatedPhoto] = useState<PhotoSummary | null>(null);
   const [dragging, setDragging] = useState(false);
   const uploadGenerations = useRef(new Map<string, number>());
   const uploadControllers = useRef(new Map<string, AbortController>());
@@ -452,59 +454,77 @@ export function App({ client = browserPhotoLibraryClient }: { client?: PhotoLibr
           </div>
         </section>
 
-        {searchResults !== null ? (
-          <SearchResults
-            query={searchQuery}
-            results={searchResults}
-            degradedReason={degradedReason}
-            selected={selected}
-            writesEnabled={writesEnabled}
-            onSelect={toggleSelection}
-            onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
-          />
-        ) : (
-          <section aria-labelledby="gallery-heading" className="grid gap-md">
-            <div className="flex flex-wrap items-center justify-between gap-sm">
-              <div>
-                <h2 id="gallery-heading" className="m-0 text-title">
-                  Latest photos
-                </h2>
-                <p className="mt-3xs mb-0 text-sm text-muted">
-                  {loading ? "Loading…" : `${photos.length} photos`}
-                </p>
-              </div>
-              {photos.length > 0 && (
-                <div className="flex flex-wrap gap-xs">
-                  <button
-                    type="button"
-                    className="min-h-control rounded-md border border-line-strong px-sm font-semibold hover-safe:bg-surface"
-                    onClick={() => setSelected(new Set(photos.map((photo) => photo.id)))}
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    className="min-h-control rounded-md border border-line-strong px-sm font-semibold hover-safe:bg-surface"
-                    onClick={() => setSelected(new Set())}
-                  >
-                    Clear selection
-                  </button>
+        <div
+          className={
+            relatedPhoto ? "grid items-start gap-xl wide:grid-workspace-panel" : "grid gap-xl"
+          }
+        >
+          {searchResults !== null ? (
+            <SearchResults
+              query={searchQuery}
+              results={searchResults}
+              degradedReason={degradedReason}
+              selected={selected}
+              writesEnabled={writesEnabled}
+              client={client}
+              onSelect={toggleSelection}
+              onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
+              onShowRelated={setRelatedPhoto}
+            />
+          ) : (
+            <section aria-labelledby="gallery-heading" className="grid gap-md">
+              <div className="flex flex-wrap items-center justify-between gap-sm">
+                <div>
+                  <h2 id="gallery-heading" className="m-0 text-title">
+                    Latest photos
+                  </h2>
+                  <p className="mt-3xs mb-0 text-sm text-muted">
+                    {loading ? "Loading…" : `${photos.length} photos`}
+                  </p>
                 </div>
+                {photos.length > 0 && (
+                  <div className="flex flex-wrap gap-xs">
+                    <button
+                      type="button"
+                      className="min-h-control rounded-md border border-line-strong px-sm font-semibold hover-safe:bg-surface"
+                      onClick={() => setSelected(new Set(photos.map((photo) => photo.id)))}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-control rounded-md border border-line-strong px-sm font-semibold hover-safe:bg-surface"
+                      onClick={() => setSelected(new Set())}
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
+              </div>
+              {!loading && visiblePhotos.length === 0 ? (
+                <EmptyState>No photos are available yet.</EmptyState>
+              ) : (
+                <PhotoGrid
+                  photos={visiblePhotos}
+                  selected={selected}
+                  writesEnabled={writesEnabled}
+                  client={client}
+                  onSelect={toggleSelection}
+                  onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
+                  onShowRelated={setRelatedPhoto}
+                />
               )}
-            </div>
-            {!loading && visiblePhotos.length === 0 ? (
-              <EmptyState>No photos are available yet.</EmptyState>
-            ) : (
-              <PhotoGrid
-                photos={visiblePhotos}
-                selected={selected}
-                writesEnabled={writesEnabled}
-                onSelect={toggleSelection}
-                onRemoveTag={(id, tag) => void mutateTags("remove", tag, [id])}
-              />
-            )}
-          </section>
-        )}
+            </section>
+          )}
+          {relatedPhoto && (
+            <RelatedPhotosPanel
+              photo={relatedPhoto}
+              client={client}
+              onClose={() => setRelatedPhoto(null)}
+              onOpenRelated={setRelatedPhoto}
+            />
+          )}
+        </div>
 
         <BulkTagBar
           selectedCount={selectedCount}
@@ -533,14 +553,18 @@ function PhotoGrid({
   photos,
   selected,
   writesEnabled,
+  client,
   onSelect,
   onRemoveTag,
+  onShowRelated,
 }: {
   photos: PhotoSummary[];
   selected: Set<string>;
   writesEnabled: boolean;
+  client: PhotoLibraryClient;
   onSelect(id: string): void;
   onRemoveTag(id: string, tag: string): void;
+  onShowRelated(photo: PhotoSummary): void;
 }) {
   return (
     <div
@@ -553,8 +577,10 @@ function PhotoGrid({
           photo={photo}
           selected={selected.has(photo.id)}
           disabled={!writesEnabled}
+          client={client}
           onSelect={onSelect}
           onRemoveTag={onRemoveTag}
+          onShowRelated={onShowRelated}
         />
       ))}
     </div>
@@ -628,16 +654,20 @@ function SearchResults({
   degradedReason,
   selected,
   writesEnabled,
+  client,
   onSelect,
   onRemoveTag,
+  onShowRelated,
 }: {
   query: string;
   results: SearchResult[];
   degradedReason: string | null;
   selected: Set<string>;
   writesEnabled: boolean;
+  client: PhotoLibraryClient;
   onSelect(id: string): void;
   onRemoveTag(id: string, tag: string): void;
+  onShowRelated(photo: PhotoSummary): void;
 }) {
   const sections: { tier: SearchTier; heading: string; empty: string }[] = [
     { tier: "exact_human_tag", heading: "Human tag", empty: "No exact human-tag matches." },
@@ -671,8 +701,10 @@ function SearchResults({
                   photos={tierResults.map((result) => result.photo)}
                   selected={selected}
                   writesEnabled={writesEnabled}
+                  client={client}
                   onSelect={onSelect}
                   onRemoveTag={onRemoveTag}
+                  onShowRelated={onShowRelated}
                 />
               </>
             )}

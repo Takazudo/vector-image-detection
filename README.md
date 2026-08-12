@@ -36,7 +36,9 @@ flowchart LR
 
 AI words and human tags are different data with different ownership. AI output is normalized, bounded, and stored with its model run. Only a human-tag API can change human tags; it never edits AI words.
 
-Search is deterministic: **exact human tag → exact AI word → related**. Related search derives a text document from the AI-generated English caption/words plus human tags. It is not raw visual or image-to-image similarity, and it differs from the offline SigLIP CLI/core tools. If the embedding or Vectorize service is unavailable, exact results still return with an explicit related-results warning.
+Search is deterministic: **exact human tag → exact AI word → related**. Related search derives a text document from the AI-generated English caption/words plus human tags — it is not raw visual or image-to-image similarity. If the embedding or Vectorize service is unavailable, exact results still return with an explicit related-results warning.
+
+Each photo in the gallery opens a **Related photos** panel (`GET /api/v1/photos/:photoId/related`). It reuses that same caption/AI-word/human-tag document and the same Vectorize index — not a separate visual mechanism — so results are only as good as the caption: a photo captioned `"Capacitors"` with a single AI word gets thin, description-driven neighbours. Genuine image-to-image similarity exists only in the offline `pnpm vis similar` CLI (local SigLIP vectors, `Xenova/siglip-base-patch16-224`, 768-dim, local index) — a separate tool the hosted app does not use.
 
 ## State and repair model
 
