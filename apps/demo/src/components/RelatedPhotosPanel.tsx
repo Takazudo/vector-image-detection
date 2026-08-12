@@ -23,6 +23,10 @@ interface RelatedListState {
 
 const loadingState: RelatedListState = { status: "loading", items: [], message: null };
 
+/** Mirrors `--breakpoint-wide` in `styles/global.css`, where this panel stops
+ * stacking under the gallery and becomes a sticky aside beside it. */
+const WIDE_BREAKPOINT = "68rem";
+
 /** The source photo's AI caption, which explains what the neighbours matched on. */
 type CaptionState =
   { status: "loading" } | { status: "ready"; caption: string | null } | { status: "unavailable" };
@@ -86,7 +90,14 @@ export function RelatedPhotosPanel({
     // opening it without moving focus and the viewport reads as a dead click.
     const panel = panelRef.current;
     panel?.focus({ preventScroll: true });
-    panel?.scrollIntoView?.({ block: "nearest" });
+    // Only scroll in the stacked layout — at `wide` and up the panel is a
+    // sticky aside already beside the gallery, so scrolling to it just yanks
+    // the page. `block: "start"` rather than `"nearest"`: nearest is the
+    // *minimum* scroll, and the minimum leaves the panel under the sticky
+    // BulkTagBar, which is exactly the dead-click this effect exists to avoid.
+    if (!window.matchMedia?.(`(min-width: ${WIDE_BREAKPOINT})`).matches) {
+      panel?.scrollIntoView?.({ block: "start" });
+    }
   }, [photo.id]);
 
   return (
