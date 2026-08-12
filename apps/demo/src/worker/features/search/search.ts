@@ -241,17 +241,30 @@ async function relatedCandidates(
   });
   if (parsed.length === 0) return [];
   const ids = [...new Set(parsed.map((candidate) => candidate.photoId))];
-  const placeholders = ids.map(() => "?").join(", ");
-  const canonical = await providers.database
+  return filterCanonicalSemanticCandidates(parsed, await canonicalRowsFor(providers.database, ids));
+}
+
+/**
+ * Shared by `search.ts`'s embedding-driven related tier and `related.ts`'s
+ * `queryById`-driven related-photos endpoint: only D1 decides which vector
+ * generation is canonical for a photo, so both callers resolve candidates
+ * against this same lookup rather than trusting Vectorize match metadata.
+ */
+export async function canonicalRowsFor(
+  database: D1Database,
+  photoIds: readonly string[],
+): Promise<CanonicalVectorRow[]> {
+  const placeholders = photoIds.map(() => "?").join(", ");
+  const canonical = await database
     .prepare(
       `SELECT p.id, p.created_at, p.canonical_indexed_revision, p.canonical_vector_id
        FROM photos p WHERE p.id IN (${placeholders}) AND p.state = 'ready'
          AND p.canonical_indexed_revision IS NOT NULL AND p.canonical_vector_id IS NOT NULL
          AND NOT EXISTS (SELECT 1 FROM tombstones t WHERE t.photo_id = p.id)`,
     )
-    .bind(...ids)
+    .bind(...photoIds)
     .all<CanonicalVectorRow>();
-  return filterCanonicalSemanticCandidates(parsed, canonical.results);
+  return canonical.results;
 }
 
 export function filterCanonicalSemanticCandidates(
@@ -282,18 +295,27 @@ export function filterCanonicalSemanticCandidates(
   );
 }
 
-function parseCursor(cursor: string | undefined): number {
+/**
+ * `maxOffset` bounds how far a cursor may seek into the flattened result
+ * array. Search's default (300) covers its three concatenated 100-candidate
+ * tiers; `related.ts` passes its own single-tier candidate limit.
+ */
+export function parseCursor(cursor: string | undefined, maxOffset = 300): number {
   if (cursor === undefined) return 0;
   const match = /^v1:(\d+)$/.exec(cursor);
   if (!match) throw new RangeError("Invalid search cursor.");
   const offset = Number(match[1]);
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 300) {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > maxOffset) {
     throw new RangeError("Invalid search cursor.");
   }
   return offset;
 }
 
-async function withTimeout<T>(promise: Promise<T>, milliseconds: number, code: string): Promise<T> {
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  milliseconds: number,
+  code: string,
+): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
