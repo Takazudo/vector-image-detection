@@ -1,4 +1,5 @@
 export { hydratePhotoSummaries } from "./photo-hydration";
+export { getRelatedPhotos } from "./related";
 export {
   searchPhotoLibrary,
   searchPhotoLibraryTiers,
