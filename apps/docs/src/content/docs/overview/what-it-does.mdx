@@ -18,6 +18,8 @@ Workers AI が英語 caption と AI suggested words を生成します。これ�
 
 related は AI の英語 caption/words と human tags を連結したテキスト文書の意味検索です。画像そのものの近さ、画像から画像の類似検索、またはローカル SigLIP の共有画像/テキスト空間ではありません。Workers AI または Vectorize が失敗・遅延しても、完全一致は返り、related のみが劣化警告になります。
 
+各写真の詳細ページには **Related photos** パネル（`GET /api/v1/photos/:photoId/related`）もあります。related tier と同じ caption/AI-word/human-tag のテキスト文書・同じ Vectorize index を再利用するだけで、別の視覚的な仕組みではありません。結果の質は caption の質が上限です — 例えば AI word がひとつだけの薄い caption（`"Capacitors"` など）では、related の候補も同じだけ薄くなります。本物の image-to-image similarity は offline の `pnpm vis similar` CLI（ローカル SigLIP ベクトル、`Xenova/siglip-base-patch16-224`、768 次元、ローカル index）だけが提供する別ツールで、hosted app はこれを使いません。
+
 ## 公開の安全境界
 
 Worker は JPEG/PNG/WebP、5 MiB、画像寸法、同一 origin / `Sec-Fetch-Site`、レート制限、日次・全体 quota、タグ数・タグ長・バッチ数を検証します。R2 URL は公開せず、ready 以外・tombstoned のメディアも返しません。これは認証・モデレーションの代替ではありません。
